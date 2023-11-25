@@ -29,7 +29,7 @@ type KeyPairFactory interface {
 	New() (KeyPair, error)
 }
 
-// PublicEqual checks whether the two given public keys are equal.
+// PublicsEqual checks whether the two given public keys are equal.
 func PublicsEqual(key1 crypto.PublicKey, key2 crypto.PublicKey) bool {
 	ecdsaKey1, ok := key1.(*ecdsa.PublicKey)
 	if ok {
@@ -46,7 +46,7 @@ func PublicsEqual(key1 crypto.PublicKey, key2 crypto.PublicKey) bool {
 	return false
 }
 
-// PublicEqual checks whether the two given private keys are equal.
+// PublicsEqual checks whether the two given private keys are equal.
 func PrivatesEqual(key1 crypto.PrivateKey, key2 crypto.PrivateKey) bool {
 	ecdsaKey1, ok := key1.(*ecdsa.PrivateKey)
 	if ok {
@@ -61,4 +61,40 @@ func PrivatesEqual(key1 crypto.PrivateKey, key2 crypto.PrivateKey) bool {
 		return rsaKey1.Equal(key2)
 	}
 	return false
+}
+
+var providerNames = []string{}
+var providerKeyPairFactories = make(map[string]func() []KeyPairFactory, 0)
+var keyPairFactories = make(map[string]KeyPairFactory, 0)
+
+// KeyProviders returns the known key providers (ECDSA, ED25519, RSA).
+func Providers() []string {
+	names := providerNames
+	return names
+}
+
+// ProviderKeyPairFactories returns the standard keys for the given key provider.
+func ProviderKeyPairFactories(provider string) []KeyPairFactory {
+	return providerKeyPairFactories[provider]()
+}
+
+// ProviderKeyPairFactory returns the key pair factory corresponding to the given key pair factory name.
+func ProviderKeyPairFactory(kpfName string) KeyPairFactory {
+	return keyPairFactories[kpfName]
+}
+
+func init() {
+	providerNames = append(providerNames, ECDSAProviderName, ED25519ProviderName, RSAProviderName)
+	providerKeyPairFactories[ECDSAProviderName] = ECDSAKeyPairFactories
+	for _, kpf := range ECDSAKeyPairFactories() {
+		keyPairFactories[kpf.Name()] = kpf
+	}
+	providerKeyPairFactories[ED25519ProviderName] = ED25519KeyPairFactories
+	for _, kpf := range ED25519KeyPairFactories() {
+		keyPairFactories[kpf.Name()] = kpf
+	}
+	providerKeyPairFactories[RSAProviderName] = RSAKeyPairFactories
+	for _, kpf := range RSAKeyPairFactories() {
+		keyPairFactories[kpf.Name()] = kpf
+	}
 }

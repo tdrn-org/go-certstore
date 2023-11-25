@@ -3,20 +3,17 @@
 // This software may be modified and distributed under the terms
 // of the MIT license.  See the LICENSE file for details.
 
-// Package rsa implements [crypto/rsa] related key functions.
-package rsa
+package keys
 
 import (
 	"crypto"
 	"crypto/rand"
 	algorithm "crypto/rsa"
 	"strconv"
-
-	"github.com/hdecarne-github/go-certstore/keys"
 )
 
 // Name of the RSA key provider.
-const ProviderName = "RSA"
+const RSAProviderName = "RSA"
 
 // RSAKeyPair provides the KeyPair interface for RSA keys.
 type RSAKeyPair struct {
@@ -24,7 +21,7 @@ type RSAKeyPair struct {
 }
 
 // NewRSAKeyPair creates a new RSA key pair for the given bit size.
-func NewRSAKeyPair(bits int) (keys.KeyPair, error) {
+func NewRSAKeyPair(bits int) (KeyPair, error) {
 	key, err := algorithm.GenerateKey(rand.Reader, bits)
 	if err != nil {
 		return nil, err
@@ -48,23 +45,23 @@ type RSAKeyPairFactory struct {
 }
 
 // NewRSAKeyPairFactory creates a new RSA key pair factory for the given bit size.
-func NewRSAKeyPairFactory(bits int) keys.KeyPairFactory {
+func NewRSAKeyPairFactory(bits int) KeyPairFactory {
 	return &RSAKeyPairFactory{bits: bits}
 }
 
 // Name returns the name of this RSA key pair factory.
 func (factory *RSAKeyPairFactory) Name() string {
-	return ProviderName + " " + strconv.Itoa(factory.bits)
+	return RSAProviderName + " " + strconv.Itoa(factory.bits)
 }
 
 // New generates a new RSA key pair
-func (factory *RSAKeyPairFactory) New() (keys.KeyPair, error) {
+func (factory *RSAKeyPairFactory) New() (KeyPair, error) {
 	return NewRSAKeyPair(factory.bits)
 }
 
-// StandardKeys returns key pair factories for the standard RSA bit sizes (2048, 3072, 4096).
-func StandardKeys() []keys.KeyPairFactory {
-	return []keys.KeyPairFactory{
+// RSAKeyPairFactories returns key pair factories for the standard RSA bit sizes (2048, 3072, 4096).
+func RSAKeyPairFactories() []KeyPairFactory {
+	return []KeyPairFactory{
 		NewRSAKeyPairFactory(2048),
 		NewRSAKeyPairFactory(3072),
 		NewRSAKeyPairFactory(4096),

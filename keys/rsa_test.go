@@ -3,18 +3,19 @@
 // This software may be modified and distributed under the terms
 // of the MIT license.  See the LICENSE file for details.
 
-package rsa
+package keys_test
 
 import (
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/hdecarne-github/go-certstore/keys"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRSAKeyPair(t *testing.T) {
-	kpfs := StandardKeys()
+	kpfs := keys.RSAKeyPairFactories()
 	for _, kpf := range kpfs {
 		fmt.Printf("Generating %s", kpf.Name())
 		start := time.Now()

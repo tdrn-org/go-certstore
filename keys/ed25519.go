@@ -3,19 +3,16 @@
 // This software may be modified and distributed under the terms
 // of the MIT license.  See the LICENSE file for details.
 
-// Package ed25519 implements [crypto/ed25519] related key functions.
-package ed25519
+package keys
 
 import (
 	"crypto"
 	algorithm "crypto/ed25519"
 	"crypto/rand"
-
-	"github.com/hdecarne-github/go-certstore/keys"
 )
 
 // Name of the ED25519 key provider.
-const ProviderName = "ED25519"
+const ED25519ProviderName = "ED25519"
 
 // ED25519KeyPair provides the KeyPair interface for ED25519 keys.
 type ED25519KeyPair struct {
@@ -24,7 +21,7 @@ type ED25519KeyPair struct {
 }
 
 // NewED25519KeyPair creates a new ED25519 key pair.
-func NewED25519KeyPair() (keys.KeyPair, error) {
+func NewED25519KeyPair() (KeyPair, error) {
 	public, private, err := algorithm.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, err
@@ -46,23 +43,23 @@ func (keypair *ED25519KeyPair) Private() crypto.PrivateKey {
 type ED25519KeyPairFactory struct{}
 
 // NewED25519KeyPairFactory creates a new ED25519 key pair factory.
-func NewED25519KeyPairFactory() keys.KeyPairFactory {
+func NewED25519KeyPairFactory() KeyPairFactory {
 	return &ED25519KeyPairFactory{}
 }
 
 // Name returns the name of this ED25519 key pair factory.
 func (factory *ED25519KeyPairFactory) Name() string {
-	return ProviderName
+	return ED25519ProviderName
 }
 
 // New generates a new ED25519 key pair
-func (factory *ED25519KeyPairFactory) New() (keys.KeyPair, error) {
+func (factory *ED25519KeyPairFactory) New() (KeyPair, error) {
 	return NewED25519KeyPair()
 }
 
-// StandardKeys returns the standard ED25519 key pair factory.
-func StandardKeys() []keys.KeyPairFactory {
-	return []keys.KeyPairFactory{
+// ED25519KeyPairFactories returns the standard ED25519 key pair factory.
+func ED25519KeyPairFactories() []KeyPairFactory {
+	return []KeyPairFactory{
 		NewED25519KeyPairFactory(),
 	}
 }
