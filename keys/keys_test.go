@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEqual(t *testing.T) {
+func TestEquals(t *testing.T) {
 	ecdsaPrivateKey, err := ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
 	require.NoError(t, err)
 	ed25519PublicKey, ed25519PrivateKey, err := ed25519.GenerateKey(rand.Reader)
@@ -62,6 +62,11 @@ func TestProviders(t *testing.T) {
 			kpf := keys.ProviderKeyPairFactory(providerKPF.Name())
 			require.NotNil(t, kpf)
 			require.Equal(t, providerKPF.Name(), kpf.Name())
+			keyPair, err := kpf.New()
+			require.NotNil(t, keyPair)
+			require.NoError(t, err)
+			require.NotNil(t, keyPair.Public())
+			require.NotNil(t, keyPair.Private())
 		}
 	}
 }
