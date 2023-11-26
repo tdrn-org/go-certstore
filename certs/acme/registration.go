@@ -133,9 +133,13 @@ func prepareProviderRegistration(provider *ProviderConfig, file *os.File, keyPai
 }
 
 func unmarshalProviderRegistrations(file *os.File) ([]ProviderRegistration, error) {
+	_, err := file.Seek(0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("seek failed for file '%s' (cause: %w)", file.Name(), err)
+	}
 	readBytes := make([]byte, 0, 4096)
 	for {
-		read, err := file.Read(readBytes)
+		read, err := file.Read(readBytes[len(readBytes):cap(readBytes)])
 		if read == 0 {
 			break
 		}

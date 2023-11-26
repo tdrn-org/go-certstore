@@ -64,6 +64,7 @@ func (factory *acmeCertificateFactory) New() (crypto.PrivateKey, *x509.Certifica
 		PrivateKey: key.Private(),
 		Bundle:     false,
 	}
+	factory.logger.Info().Msg("obtaining X.509 certificate from ACME provider...")
 	certificates, err := client.Certificate.Obtain(request)
 	if err != nil {
 		return nil, nil, err

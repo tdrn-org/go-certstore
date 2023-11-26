@@ -6,6 +6,7 @@
 package certs_test
 
 import (
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -23,14 +24,14 @@ func TestACMECertificateFactory(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 	config := loadAndPrepareACMEConfig(t, "./acme/testdata/acme-test.yaml", tempDir)
-	newCertificate(t, config)
-	newCertificate(t, config)
+	newCertificate(t, config, "Test1")
+	newCertificate(t, config, "Test2")
 }
 
-func newCertificate(t *testing.T, config *acme.Config) {
-	cf := certs.NewACMECertificateFactory([]string{"localhost"}, config, "Test", keys.ProviderKeyPairFactories("RSA")[0])
+func newCertificate(t *testing.T, config *acme.Config, provider string) {
+	cf := certs.NewACMECertificateFactory([]string{"localhost"}, config, provider, keys.ProviderKeyPairFactories("RSA")[0])
 	require.NotNil(t, cf)
-	require.Equal(t, "ACME[Test]", cf.Name())
+	require.Equal(t, fmt.Sprintf("ACME[%s]", provider), cf.Name())
 	privateKey, cert, err := cf.New()
 	require.NotNil(t, privateKey)
 	require.NotNil(t, cert)
@@ -42,11 +43,11 @@ func loadAndPrepareACMEConfig(t *testing.T, configPath string, tempDir string) *
 	require.NoError(t, err)
 	require.NotNil(t, config)
 	certificateFiles := make([]string, 0)
-	for i, provider := range config.Providers {
+	for name, provider := range config.Providers {
 		if !filepath.IsAbs(provider.RegistrationPath) {
 			updatedProvider := provider
 			updatedProvider.RegistrationPath = filepath.Join(tempDir, provider.RegistrationPath)
-			config.Providers[i] = updatedProvider
+			config.Providers[name] = updatedProvider
 		}
 		providerUrl, err := url.Parse(provider.URL)
 		require.NoError(t, err)
