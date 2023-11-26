@@ -17,10 +17,34 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEquals(t *testing.T) {
+func TestPublicEquals(t *testing.T) {
 	ecdsaPrivateKey, err := ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
 	require.NoError(t, err)
-	ed25519PublicKey, ed25519PrivateKey, err := ed25519.GenerateKey(rand.Reader)
+	ed25519PublicKey, _, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	rsaPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	// ecdsa
+	require.True(t, keys.PublicsEqual(&ecdsaPrivateKey.PublicKey, &ecdsaPrivateKey.PublicKey))
+	require.False(t, keys.PublicsEqual(&ecdsaPrivateKey.PublicKey, ed25519PublicKey))
+	require.False(t, keys.PublicsEqual(&ecdsaPrivateKey.PublicKey, &rsaPrivateKey.PublicKey))
+
+	// ed25519
+	require.False(t, keys.PublicsEqual(ed25519PublicKey, &ecdsaPrivateKey.PublicKey))
+	require.True(t, keys.PublicsEqual(ed25519PublicKey, ed25519PublicKey))
+	require.False(t, keys.PublicsEqual(ed25519PublicKey, &rsaPrivateKey.PublicKey))
+
+	// rsa
+	require.False(t, keys.PublicsEqual(&rsaPrivateKey.PublicKey, &ecdsaPrivateKey.PublicKey))
+	require.False(t, keys.PublicsEqual(&rsaPrivateKey.PublicKey, ed25519PublicKey))
+	require.True(t, keys.PublicsEqual(&rsaPrivateKey.PublicKey, &rsaPrivateKey.PublicKey))
+}
+
+func TestPrivateEquals(t *testing.T) {
+	ecdsaPrivateKey, err := ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
+	require.NoError(t, err)
+	_, ed25519PrivateKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 	rsaPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
@@ -30,27 +54,33 @@ func TestEquals(t *testing.T) {
 	require.False(t, keys.PrivatesEqual(ecdsaPrivateKey, ed25519PrivateKey))
 	require.False(t, keys.PrivatesEqual(ecdsaPrivateKey, rsaPrivateKey))
 
-	require.True(t, keys.PublicsEqual(&ecdsaPrivateKey.PublicKey, &ecdsaPrivateKey.PublicKey))
-	require.False(t, keys.PublicsEqual(&ecdsaPrivateKey.PublicKey, ed25519PublicKey))
-	require.False(t, keys.PublicsEqual(&ecdsaPrivateKey.PublicKey, &rsaPrivateKey.PublicKey))
-
 	// ed25519
 	require.False(t, keys.PrivatesEqual(ed25519PrivateKey, ecdsaPrivateKey))
 	require.True(t, keys.PrivatesEqual(ed25519PrivateKey, ed25519PrivateKey))
 	require.False(t, keys.PrivatesEqual(ed25519PrivateKey, rsaPrivateKey))
 
-	require.False(t, keys.PublicsEqual(ed25519PublicKey, &ecdsaPrivateKey.PublicKey))
-	require.True(t, keys.PublicsEqual(ed25519PublicKey, ed25519PublicKey))
-	require.False(t, keys.PublicsEqual(ed25519PublicKey, &rsaPrivateKey.PublicKey))
-
 	// rsa
 	require.False(t, keys.PrivatesEqual(rsaPrivateKey, ecdsaPrivateKey))
 	require.False(t, keys.PrivatesEqual(rsaPrivateKey, ed25519PrivateKey))
 	require.True(t, keys.PrivatesEqual(rsaPrivateKey, rsaPrivateKey))
+}
 
-	require.False(t, keys.PublicsEqual(&rsaPrivateKey.PublicKey, &ecdsaPrivateKey.PublicKey))
-	require.False(t, keys.PublicsEqual(&rsaPrivateKey.PublicKey, ed25519PublicKey))
-	require.True(t, keys.PublicsEqual(&rsaPrivateKey.PublicKey, &rsaPrivateKey.PublicKey))
+func TestPublicFromPrivate(t *testing.T) {
+	ecdsaPrivateKey, err := ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
+	require.NoError(t, err)
+	ed25519PublicKey, ed25519PrivateKey, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	rsaPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	// ecdsa
+	require.True(t, keys.PublicsEqual(&ecdsaPrivateKey.PublicKey, keys.PublicFromPrivate(ecdsaPrivateKey)))
+
+	// ed25519
+	require.True(t, keys.PublicsEqual(ed25519PublicKey, keys.PublicFromPrivate(ed25519PrivateKey)))
+
+	// rsa
+	require.True(t, keys.PublicsEqual(&rsaPrivateKey.PublicKey, keys.PublicFromPrivate(rsaPrivateKey)))
 }
 
 func TestProviders(t *testing.T) {

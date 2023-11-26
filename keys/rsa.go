@@ -10,57 +10,57 @@ import (
 	"crypto/rand"
 	algorithm "crypto/rsa"
 	"strconv"
+
+	"github.com/hdecarne-github/go-log"
+	"github.com/rs/zerolog"
 )
 
-// Name of the RSA key provider.
-const RSAProviderName = "RSA"
+const rsaProviderName = "RSA"
 
-// RSAKeyPair provides the KeyPair interface for RSA keys.
-type RSAKeyPair struct {
+type rsaKeyPair struct {
 	key *algorithm.PrivateKey
 }
 
-// NewRSAKeyPair creates a new RSA key pair for the given bit size.
+func (keypair *rsaKeyPair) Public() crypto.PublicKey {
+	return &keypair.key.PublicKey
+}
+
+func (keypair *rsaKeyPair) Private() crypto.PrivateKey {
+	return keypair.key
+}
+
+// NewRSAKeyPair generates a new RSA key pair for the given bit size.
 func NewRSAKeyPair(bits int) (KeyPair, error) {
 	key, err := algorithm.GenerateKey(rand.Reader, bits)
 	if err != nil {
 		return nil, err
 	}
-	return &RSAKeyPair{key: key}, nil
+	return &rsaKeyPair{key: key}, nil
 }
 
-// Public returns the public key of the RSA key pair.
-func (keypair *RSAKeyPair) Public() crypto.PublicKey {
-	return &keypair.key.PublicKey
+type rsaKeyPairFactory struct {
+	bits   int
+	name   string
+	logger *zerolog.Logger
 }
 
-// Private returns the private key of the RSA key pair.
-func (keypair *RSAKeyPair) Private() crypto.PrivateKey {
-	return keypair.key
+func (factory *rsaKeyPairFactory) Name() string {
+	return factory.name
 }
 
-// RSAKeyPairFactory provides the KeyPairFactory interface for RSA keys.
-type RSAKeyPairFactory struct {
-	bits int
+func (factory *rsaKeyPairFactory) New() (KeyPair, error) {
+	factory.logger.Info().Msg("generating new RSA key pair...")
+	return NewRSAKeyPair(factory.bits)
 }
 
 // NewRSAKeyPairFactory creates a new RSA key pair factory for the given bit size.
 func NewRSAKeyPairFactory(bits int) KeyPairFactory {
-	return &RSAKeyPairFactory{bits: bits}
+	name := rsaProviderName + " " + strconv.Itoa(bits)
+	logger := log.RootLogger().With().Str("KeyPairFactory", name).Logger()
+	return &rsaKeyPairFactory{bits: bits, name: name, logger: &logger}
 }
 
-// Name returns the name of this RSA key pair factory.
-func (factory *RSAKeyPairFactory) Name() string {
-	return RSAProviderName + " " + strconv.Itoa(factory.bits)
-}
-
-// New generates a new RSA key pair
-func (factory *RSAKeyPairFactory) New() (KeyPair, error) {
-	return NewRSAKeyPair(factory.bits)
-}
-
-// RSAKeyPairFactories returns key pair factories for the standard RSA bit sizes (2048, 3072, 4096).
-func RSAKeyPairFactories() []KeyPairFactory {
+func rsaKeyPairFactories() []KeyPairFactory {
 	return []KeyPairFactory{
 		NewRSAKeyPairFactory(2048),
 		NewRSAKeyPairFactory(3072),

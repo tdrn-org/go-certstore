@@ -31,6 +31,10 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+      - name: Set up CI
+        run: |
+          go install github.com/letsencrypt/pebble/v2/...@v2.4.0
+          $(go env GOPATH)/bin/pebble -config ./certs/acme/testdata/pebble-config.json > /dev/null 2>&1 &
       - name: Run Build
         run: make check
       - name: Run SonarQube

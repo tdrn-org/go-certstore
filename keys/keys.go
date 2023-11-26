@@ -4,97 +4,77 @@
 // of the MIT license.  See the LICENSE file for details.
 
 // Package keys implements a unified interface for key handling.
+//
+// The key types [crypto/ecdsa], [crypto/ed25519], [crypto/rsa] are supported.
 package keys
 
 import (
 	"crypto"
-	"crypto/ecdsa"
-	"crypto/ed25519"
-	"crypto/rsa"
+	"reflect"
 )
 
-// KeyPair interface provides access to the private key and its accompanyinng public key.
+// KeyPair interface provides unified access to a key pair.
 type KeyPair interface {
-	// Public returns the public key of a key pair.
-	Public() crypto.PublicKey
 	// Private returns the private key of a key pair.
 	Private() crypto.PrivateKey
+	// Public returns the public key of a key pair.
+	Public() crypto.PublicKey
 }
 
-// KeyPairFactory interface provides a generic way to create a key pair.
+// KeyPairFactory interface provides a unified way to create key pairs.
 type KeyPairFactory interface {
 	// Name returns the name of this factory.
 	Name() string
-	// New creates a new key pair.
+	// New generates a new key pair.
 	New() (KeyPair, error)
 }
 
 // PublicsEqual checks whether the two given public keys are equal.
-func PublicsEqual(key1 crypto.PublicKey, key2 crypto.PublicKey) bool {
-	ecdsaKey1, ok := key1.(*ecdsa.PublicKey)
-	if ok {
-		return ecdsaKey1.Equal(key2)
-	}
-	ed25519Key1, ok := key1.(ed25519.PublicKey)
-	if ok {
-		return ed25519Key1.Equal(key2)
-	}
-	rsaKey1, ok := key1.(*rsa.PublicKey)
-	if ok {
-		return rsaKey1.Equal(key2)
-	}
-	return false
+func PublicsEqual(publicKey1 crypto.PublicKey, publicKey2 crypto.PublicKey) bool {
+	return reflect.ValueOf(publicKey1).MethodByName("Equal").Call([]reflect.Value{reflect.ValueOf(publicKey2)})[0].Bool()
 }
 
-// PublicsEqual checks whether the two given private keys are equal.
-func PrivatesEqual(key1 crypto.PrivateKey, key2 crypto.PrivateKey) bool {
-	ecdsaKey1, ok := key1.(*ecdsa.PrivateKey)
-	if ok {
-		return ecdsaKey1.Equal(key2)
-	}
-	ed25519Key1, ok := key1.(ed25519.PrivateKey)
-	if ok {
-		return ed25519Key1.Equal(key2)
-	}
-	rsaKey1, ok := key1.(*rsa.PrivateKey)
-	if ok {
-		return rsaKey1.Equal(key2)
-	}
-	return false
+// PrivatesEqual checks whether the two given private keys are equal.
+func PrivatesEqual(privateKey1 crypto.PrivateKey, privateKey2 crypto.PrivateKey) bool {
+	return reflect.ValueOf(privateKey1).MethodByName("Equal").Call([]reflect.Value{reflect.ValueOf(privateKey2)})[0].Bool()
+}
+
+// PublicFromPrivate gets the public key associated with the given private key.
+func PublicFromPrivate(privateKey crypto.PrivateKey) crypto.PublicKey {
+	publicKey, _ := reflect.ValueOf(privateKey).MethodByName("Public").Call([]reflect.Value{})[0].Interface().(crypto.PublicKey)
+	return publicKey
 }
 
 var providerNames = []string{}
-var providerKeyPairFactories = make(map[string]func() []KeyPairFactory, 0)
+var providerKeyPairFactories = make(map[string][]KeyPairFactory, 0)
 var keyPairFactories = make(map[string]KeyPairFactory, 0)
 
-// KeyProviders returns the known key providers (ECDSA, ED25519, RSA).
+// Providers returns the known key providers (ECDSA, ED25519, RSA).
 func Providers() []string {
 	names := providerNames
 	return names
 }
 
-// ProviderKeyPairFactories returns the standard keys for the given key provider.
+// ProviderKeyPairFactories returns the [KeyPairFactory] instances for the given key provider.
 func ProviderKeyPairFactories(provider string) []KeyPairFactory {
-	return providerKeyPairFactories[provider]()
+	return providerKeyPairFactories[provider]
 }
 
-// ProviderKeyPairFactory returns the key pair factory corresponding to the given key pair factory name.
-func ProviderKeyPairFactory(kpfName string) KeyPairFactory {
-	return keyPairFactories[kpfName]
+// ProviderKeyPairFactory returns the [KeyPairFactory] instance for the given key pair factory name.
+func ProviderKeyPairFactory(keyPairFactoryName string) KeyPairFactory {
+	return keyPairFactories[keyPairFactoryName]
 }
 
 func init() {
-	providerNames = append(providerNames, ECDSAProviderName, ED25519ProviderName, RSAProviderName)
-	providerKeyPairFactories[ECDSAProviderName] = ECDSAKeyPairFactories
-	for _, kpf := range ECDSAKeyPairFactories() {
-		keyPairFactories[kpf.Name()] = kpf
-	}
-	providerKeyPairFactories[ED25519ProviderName] = ED25519KeyPairFactories
-	for _, kpf := range ED25519KeyPairFactories() {
-		keyPairFactories[kpf.Name()] = kpf
-	}
-	providerKeyPairFactories[RSAProviderName] = RSAKeyPairFactories
-	for _, kpf := range RSAKeyPairFactories() {
+	providerNames = append(providerNames, ecdsaProviderName, ed25519ProviderName, rsaProviderName)
+	initKPFs(ecdsaProviderName, ecdsaKeyPairFactories())
+	initKPFs(ed25519ProviderName, ed25519KeyPairFactories())
+	initKPFs(rsaProviderName, rsaKeyPairFactories())
+}
+
+func initKPFs(provider string, kpfs []KeyPairFactory) {
+	providerKeyPairFactories[provider] = kpfs
+	for _, kpf := range kpfs {
 		keyPairFactories[kpf.Name()] = kpf
 	}
 }

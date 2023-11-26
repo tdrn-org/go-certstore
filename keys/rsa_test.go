@@ -15,7 +15,7 @@ import (
 )
 
 func TestRSAKeyPair(t *testing.T) {
-	kpfs := keys.RSAKeyPairFactories()
+	kpfs := keys.ProviderKeyPairFactories("RSA")
 	for _, kpf := range kpfs {
 		fmt.Printf("Generating %s", kpf.Name())
 		start := time.Now()

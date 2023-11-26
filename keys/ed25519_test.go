@@ -15,7 +15,7 @@ import (
 )
 
 func TestED25519KeyPair(t *testing.T) {
-	kpfs := keys.ED25519KeyPairFactories()
+	kpfs := keys.ProviderKeyPairFactories("ED25519")
 	for _, kpf := range kpfs {
 		fmt.Printf("Generating %s", kpf.Name())
 		start := time.Now()

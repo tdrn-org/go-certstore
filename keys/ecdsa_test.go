@@ -15,7 +15,7 @@ import (
 )
 
 func TestECDSAKeyPair(t *testing.T) {
-	kpfs := keys.ECDSAKeyPairFactories()
+	kpfs := keys.ProviderKeyPairFactories("ECDSA")
 	for _, kpf := range kpfs {
 		fmt.Printf("Generating %s", kpf.Name())
 		start := time.Now()

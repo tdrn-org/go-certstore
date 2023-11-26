@@ -9,56 +9,55 @@ import (
 	"crypto"
 	algorithm "crypto/ed25519"
 	"crypto/rand"
+
+	"github.com/hdecarne-github/go-log"
+	"github.com/rs/zerolog"
 )
 
-// Name of the ED25519 key provider.
-const ED25519ProviderName = "ED25519"
+const ed25519ProviderName = "ED25519"
 
-// ED25519KeyPair provides the KeyPair interface for ED25519 keys.
-type ED25519KeyPair struct {
+type ed25519KeyPair struct {
 	public  algorithm.PublicKey
 	private algorithm.PrivateKey
 }
 
-// NewED25519KeyPair creates a new ED25519 key pair.
+func (keypair *ed25519KeyPair) Public() crypto.PublicKey {
+	return keypair.public
+}
+
+func (keypair *ed25519KeyPair) Private() crypto.PrivateKey {
+	return keypair.private
+}
+
+// NewED25519KeyPair generates a new ED25519 key pair.
 func NewED25519KeyPair() (KeyPair, error) {
 	public, private, err := algorithm.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, err
 	}
-	return &ED25519KeyPair{public: public, private: private}, nil
+	return &ed25519KeyPair{public: public, private: private}, nil
 }
 
-// Public returns the public key of the ED25519 key pair.
-func (keypair *ED25519KeyPair) Public() crypto.PublicKey {
-	return keypair.public
+type ed25519KeyPairFactory struct {
+	logger *zerolog.Logger
 }
 
-// Private returns the private key of the ED25519 key pair.
-func (keypair *ED25519KeyPair) Private() crypto.PrivateKey {
-	return keypair.private
+func (factory *ed25519KeyPairFactory) Name() string {
+	return ed25519ProviderName
 }
 
-// ED25519KeyPairFactory provides the KeyPairFactory interface for ED25519 keys.
-type ED25519KeyPairFactory struct{}
-
-// NewED25519KeyPairFactory creates a new ED25519 key pair factory.
-func NewED25519KeyPairFactory() KeyPairFactory {
-	return &ED25519KeyPairFactory{}
-}
-
-// Name returns the name of this ED25519 key pair factory.
-func (factory *ED25519KeyPairFactory) Name() string {
-	return ED25519ProviderName
-}
-
-// New generates a new ED25519 key pair
-func (factory *ED25519KeyPairFactory) New() (KeyPair, error) {
+func (factory *ed25519KeyPairFactory) New() (KeyPair, error) {
+	factory.logger.Info().Msg("generating new ED25519 key pair...")
 	return NewED25519KeyPair()
 }
 
-// ED25519KeyPairFactories returns the standard ED25519 key pair factory.
-func ED25519KeyPairFactories() []KeyPairFactory {
+// NewED25519KeyPairFactory creates a new ED25519 key pair factory.
+func NewED25519KeyPairFactory() KeyPairFactory {
+	logger := log.RootLogger().With().Str("KeyPairFactory", ed25519ProviderName).Logger()
+	return &ed25519KeyPairFactory{logger: &logger}
+}
+
+func ed25519KeyPairFactories() []KeyPairFactory {
 	return []KeyPairFactory{
 		NewED25519KeyPairFactory(),
 	}
