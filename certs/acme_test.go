@@ -23,6 +23,11 @@ func TestACMECertificateFactory(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 	config := loadAndPrepareACMEConfig(t, "./acme/testdata/acme-test.yaml", tempDir)
+	newCertificate(t, config)
+	newCertificate(t, config)
+}
+
+func newCertificate(t *testing.T, config *acme.Config) {
 	cf := certs.NewACMECertificateFactory([]string{"localhost"}, config, "Test", keys.ProviderKeyPairFactories("RSA")[0])
 	require.NotNil(t, cf)
 	require.Equal(t, "ACME[Test]", cf.Name())
