@@ -18,27 +18,43 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// A Config defines the available ACME providers as well as the obtainable domains including their challenge types.
+//
+//	providers:
+//	  "Test1":
+//	    enabled: true
+//	    url: "https://localhost:14000/dir"
+//	    registration_email: "webmaster@localhost"
+//	    registration_path: "./acme-registrations.json"
+//
+//	domains:
+//	  ".":
+//	    http-01:
+//	      enabled: true
+//	      iface: ""
+//	      port: 5002
+//	    tls-apn-01:
+//	      enabled: true
+//	      iface: ""
+//	      port: 5001
 type Config struct {
-	BasePath  string                    `yaml:"-"`
+	// BasePath defines the base path to use for resolving relative paths within this configuration.
+	BasePath string `yaml:"-"`
+	// Providers lists the available ACME providers in this configuration.
 	Providers map[string]ProviderConfig `yaml:"providers"`
-	Domains   map[string]DomainConfig   `yaml:"domains"`
+	// Domains lists the obtainable domains in this configuration.
+	Domains map[string]DomainConfig `yaml:"domains"`
 }
 
-func (config *Config) ResolveProviderConfig(providerName string) (*ProviderConfig, error) {
-	var providerConfig *ProviderConfig
-	for _, configProvider := range config.Providers {
-		if configProvider.Name == providerName {
-			providerConfig = &configProvider
-			break
-		}
-	}
-	if providerConfig == nil {
-		return nil, fmt.Errorf("unknown ACME provider '%s'", providerName)
-	}
-	return providerConfig, nil
+// A CertificateRequest provides the necessary ACME parameters for obtaining a certificate.
+type CertificateRequest struct {
+	Domains  []string
+	Domain   *DomainConfig
+	Provider *ProviderConfig
 }
 
-func (config *Config) ResolveDomainConfig(domains []string) (*DomainConfig, error) {
+// ResolveCertificateRequest resolves the certificate request configured for the given domains and provider.
+func (config *Config) ResolveCertificateRequest(domains []string, providerName string) (*CertificateRequest, error) {
 	if len(domains) == 0 {
 		return nil, fmt.Errorf("missing domain information")
 	}
@@ -54,18 +70,39 @@ func (config *Config) ResolveDomainConfig(domains []string) (*DomainConfig, erro
 	if domainConfig == nil {
 		return nil, fmt.Errorf("missing Domain configuration for domain '%s'", domain)
 	}
-	return domainConfig, nil
+	var providerConfig *ProviderConfig
+	for _, configProvider := range config.Providers {
+		if configProvider.Name == providerName {
+			providerConfig = &configProvider
+			break
+		}
+	}
+	if providerConfig == nil {
+		return nil, fmt.Errorf("unknown ACME provider '%s'", providerName)
+	}
+	return &CertificateRequest{
+		Domains:  domains,
+		Domain:   domainConfig,
+		Provider: providerConfig,
+	}, nil
 }
 
+// A ProviderConfig defines an ACME provider.
 type ProviderConfig struct {
-	BasePath          string `yaml:"-"`
-	Name              string `yaml:"-"`
-	URL               string `yaml:"url"`
+	// BasePath defines the base path to use for resolving relative paths within this configuration.
+	BasePath string `yaml:"-"`
+	// Name defines the name of this provider.
+	Name string `yaml:"-"`
+	// URL defines the URL to use for accessing this provider.
+	URL string `yaml:"url"`
+	// RegistrationEmail defines the email to use for registering with this provider.
 	RegistrationEmail string `yaml:"registration_email"`
-	RegistrationPath  string `yaml:"registration_path"`
+	// RegistrationPath defines the path where to store the registration information.
+	RegistrationPath string `yaml:"registration_path"`
 }
 
-func (providerConfig *ProviderConfig) PrepareClient(keyPairFactory keys.KeyPairFactory) (*lego.Client, error) {
+// NewClient creates a new [lego.Client] based on the provider configuration. A necessary provider registration is performed automatically.
+func (providerConfig *ProviderConfig) NewClient(keyPairFactory keys.KeyPairFactory) (*lego.Client, error) {
 	absoluteRegistrationPath := providerConfig.absoluteRegistrationPath()
 	err := os.MkdirAll(filepath.Dir(absoluteRegistrationPath), 0700)
 	if err != nil {
@@ -81,7 +118,7 @@ func (providerConfig *ProviderConfig) PrepareClient(keyPairFactory keys.KeyPairF
 		return nil, fmt.Errorf("failed to lock registration file '%s' (cause: %w)", absoluteRegistrationPath, err)
 	}
 	defer syscall.Flock(int(registrationFile.Fd()), syscall.LOCK_UN)
-	return providerConfig.prepareClientHelper(registrationFile, keyPairFactory)
+	return providerConfig.newClientHelper(registrationFile, keyPairFactory)
 }
 
 func (providerConfig *ProviderConfig) absoluteRegistrationPath() string {
@@ -92,7 +129,7 @@ func (providerConfig *ProviderConfig) absoluteRegistrationPath() string {
 	return absoluteRegistrationPath
 }
 
-func (providerConfig *ProviderConfig) prepareClientHelper(registrationFile *os.File, keyPairFactory keys.KeyPairFactory) (*lego.Client, error) {
+func (providerConfig *ProviderConfig) newClientHelper(registrationFile *os.File, keyPairFactory keys.KeyPairFactory) (*lego.Client, error) {
 	registration, err := prepareProviderRegistration(providerConfig, registrationFile, keyPairFactory)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare ACME provider registration for provder '%s' (cause: %w)", providerConfig.Name, err)
@@ -137,24 +174,36 @@ func (providerConfig *ProviderConfig) keyTypeFromKeyPairFactory(keyPairFactory k
 	return "", fmt.Errorf("unrecognized key type '%s'", kpfName)
 }
 
+// A DomainConfig defines a domain pattern as well as the challenge types for the matching domains.
 type DomainConfig struct {
-	Domain            string                  `yaml:"-"`
-	Http01Challenge   Http01ChallengeConfig   `yaml:"http-01"`
+	// Domain defines the domain pattern, this config is assigned to. The pattern defines the suffix for the matching domains in FQDN notation ('.' defining the root domain matchin all domains).
+	Domain string `yaml:"-"`
+	// Http01Challenge configures the HTTP-01 challenge type.
+	Http01Challenge Http01ChallengeConfig `yaml:"http-01"`
+	// Http01Challenge configures the TLS-ALPN-01 challenge type.
 	TLSAPN01Challenge TLSAPN01ChallengeConfig `yaml:"tls-apn-01"`
 }
 
+// A Http01ChallengeConfig configures the HTTP-01 challenge type for domain validation.
 type Http01ChallengeConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	Iface   string `yaml:"iface"`
-	Port    int    `ymal:"port"`
+	// Enabled defines wether this challenge type is used (true) or not (false).
+	Enabled bool `yaml:"enabled"`
+	// Iface sets the interface to listen on during domain verification (optional).
+	Iface string `yaml:"iface"`
+	// Ports sets the port to listen on during domain verification.
+	Port int `ymal:"port"`
 }
 
 type TLSAPN01ChallengeConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	Iface   string `yaml:"iface"`
-	Port    int    `ymal:"port"`
+	// Enabled defines wether this challenge type is used (true) or not (false).
+	Enabled bool `yaml:"enabled"`
+	// Iface sets the interface to listen on during domain verification (optional).
+	Iface string `yaml:"iface"`
+	// Ports sets the port to listen on during domain verification.
+	Port int `ymal:"port"`
 }
 
+// LoadConfig loads a configuration from the given file.
 func LoadConfig(path string) (*Config, error) {
 	absolutePath, err := filepath.Abs(path)
 	if err != nil {

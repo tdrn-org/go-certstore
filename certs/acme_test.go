@@ -29,7 +29,12 @@ func TestACMECertificateFactory(t *testing.T) {
 }
 
 func newCertificate(t *testing.T, config *acme.Config, provider string) {
-	cf := certs.NewACMECertificateFactory([]string{"localhost"}, config, provider, keys.ProviderKeyPairFactories("RSA")[0])
+	host, err := os.Hostname()
+	require.NoError(t, err)
+	request, err := config.ResolveCertificateRequest([]string{host}, provider)
+	require.NotNil(t, request)
+	require.NoError(t, err)
+	cf := certs.NewACMECertificateFactory(request, keys.ProviderKeyPairFactories("RSA")[0])
 	require.NotNil(t, cf)
 	require.Equal(t, fmt.Sprintf("ACME[%s]", provider), cf.Name())
 	privateKey, cert, err := cf.New()

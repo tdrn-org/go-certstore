@@ -18,7 +18,11 @@ import (
 	"github.com/hdecarne-github/go-certstore/keys"
 )
 
+// A ProviderRegistration contains an ACME provider's registration information. This includes at least the necessary
+// information to register. In case a registration has been performed in the past, the ACME provider's registration
+// token is also included. However the latter may be outdated.
 type ProviderRegistration struct {
+	// Provider contains the name (as defined in [Configuration]) of the ACME provider this registration is related to.
 	Provider     string `json:"provider"`
 	Email        string `json:"email"`
 	EncodedKey   string `json:"key"`
