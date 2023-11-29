@@ -14,7 +14,7 @@ jobs:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     services:
       pebble:
-        image: letsencrypt:pebble
+        image: letsencrypt/pebble
         ports:
           - 14000:14000
     steps:
