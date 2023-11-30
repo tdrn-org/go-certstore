@@ -24,17 +24,19 @@ func TestACMECertificateFactory(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 	config := loadAndPrepareACMEConfig(t, "./acme/testdata/acme-test.yaml", tempDir)
-	newCertificate(t, config, "Test1")
-	newCertificate(t, config, "Test2")
+	newCertificate(t, config, "Test1", "RSA 2048")
+	newCertificate(t, config, "Test2", "RSA 4096")
+	newCertificate(t, config, "Test3", "ECDSA P-256")
+	newCertificate(t, config, "Test4", "ECDSA P-384")
 }
 
-func newCertificate(t *testing.T, config *acme.Config, provider string) {
+func newCertificate(t *testing.T, config *acme.Config, provider string, kpf string) {
 	host, err := os.Hostname()
 	require.NoError(t, err)
 	request, err := config.ResolveCertificateRequest([]string{host}, provider)
 	require.NotNil(t, request)
 	require.NoError(t, err)
-	cf := certs.NewACMECertificateFactory(request, keys.ProviderKeyPairFactories("RSA")[0])
+	cf := certs.NewACMECertificateFactory(request, keys.ProviderKeyPairFactory(kpf))
 	require.NotNil(t, cf)
 	require.Equal(t, fmt.Sprintf("ACME[%s]", provider), cf.Name())
 	privateKey, cert, err := cf.New()
