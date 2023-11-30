@@ -20,23 +20,35 @@ import (
 
 // A ProviderRegistration contains an ACME provider's registration information. This includes at least the necessary
 // information to register. In case a registration has been performed in the past, the ACME provider's registration
-// token is also included. However the latter may be outdated.
+// key and token is also included. However the latter may be outdated.
 type ProviderRegistration struct {
-	// Provider contains the name (as defined in [Configuration]) of the ACME provider this registration is related to.
-	Provider     string `json:"provider"`
-	Email        string `json:"email"`
-	EncodedKey   string `json:"key"`
+	// Provider contains the name of the ACME provider, this registration is related to.
+	Provider string `json:"provider"`
+	// Email contains the email to use for registering to the ACME provider.
+	Email string `json:"email"`
+	// EncodedKey contains the encoded private key used for registering to the ACME provider.
+	EncodedKey string `json:"key"`
+	// Registration contains the registration token returned from the ACME provider during the registration.
 	Registration *registration.Resource
 }
 
+// GetEmail gets the email to use for registering to the ACME provider.
+//
+// This function is part of [registration.User] interface.
 func (providerRegistration *ProviderRegistration) GetEmail() string {
 	return providerRegistration.Email
 }
 
+// GetRegistration gets the token returned by a previous run registration (may be nil).
+//
+// This function is part of [registration.User] interface.
 func (providerRegistration *ProviderRegistration) GetRegistration() *registration.Resource {
 	return providerRegistration.Registration
 }
 
+// GetPrivateKey gets the private key used for a previous performed registration (may be nil).
+//
+// This function is part of [registration.User] interface.
 func (providerRegistration *ProviderRegistration) GetPrivateKey() crypto.PrivateKey {
 	if providerRegistration.EncodedKey == "" {
 		return nil

@@ -59,7 +59,7 @@ func loadAndPrepareACMEConfig(t *testing.T, configPath string, tempDir string) *
 		certificates, err := certs.ServerCertificates("tcp", providerUrl.Host)
 		require.NoError(t, err)
 		certificateFile := filepath.Join(tempDir, provider.Name+".pem")
-		err = certs.WriteCertificates(certificateFile, certificates, 0600)
+		err = certs.WriteCertificatesPEM(certificateFile, certificates, 0600)
 		require.NoError(t, err)
 		certificateFiles = append(certificateFiles, certificateFile)
 	}

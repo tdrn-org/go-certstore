@@ -53,8 +53,8 @@ func decodeCertificates(bytes []byte) ([]*x509.Certificate, error) {
 	return decoded, nil
 }
 
-// WriteCertificates writes X.509 certificates to the given file.
-func WriteCertificates(filename string, certificates []*x509.Certificate, perm os.FileMode) error {
+// WriteCertificatesPEM writes X.509 certificates in PEM format to the given file.
+func WriteCertificatesPEM(filename string, certificates []*x509.Certificate, perm os.FileMode) error {
 	encoded := make([]byte, 0)
 	for _, certificate := range certificates {
 		block := &pem.Block{
@@ -62,6 +62,15 @@ func WriteCertificates(filename string, certificates []*x509.Certificate, perm o
 			Bytes: certificate.Raw,
 		}
 		encoded = append(encoded, pem.EncodeToMemory(block)...)
+	}
+	return os.WriteFile(filename, encoded, perm)
+}
+
+// WriteCertificatesDER writes X.509 certificates in DER format to the given file.
+func WriteCertificatesDER(filename string, certificates []*x509.Certificate, perm os.FileMode) error {
+	encoded := make([]byte, 0)
+	for _, certificate := range certificates {
+		encoded = append(encoded, certificate.Raw...)
 	}
 	return os.WriteFile(filename, encoded, perm)
 }

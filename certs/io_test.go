@@ -7,6 +7,7 @@ package certs_test
 
 import (
 	"crypto/x509/pkix"
+	"os"
 	"testing"
 
 	"github.com/hdecarne-github/go-certstore/certs"
@@ -14,17 +15,49 @@ import (
 )
 
 func TestReadPEMCertificates(t *testing.T) {
-	certs, err := certs.ReadCertificates("./testdata/isrgrootx1.pem")
+	certificates, err := certs.ReadCertificates("./testdata/isrgrootx1.pem")
 	require.NoError(t, err)
-	require.NotNil(t, certs)
-	require.Equal(t, 1, len(certs))
+	require.NotNil(t, certificates)
+	require.Equal(t, 1, len(certificates))
 }
 
 func TestReadDERCertificates(t *testing.T) {
-	certs, err := certs.ReadCertificates("./testdata/isrgrootx1.der")
+	certificates, err := certs.ReadCertificates("./testdata/isrgrootx1.der")
 	require.NoError(t, err)
-	require.NotNil(t, certs)
-	require.Equal(t, 1, len(certs))
+	require.NotNil(t, certificates)
+	require.Equal(t, 1, len(certificates))
+}
+
+func TestWritePEMCertificate(t *testing.T) {
+	certificates, err := certs.ReadCertificates("./testdata/isrgrootx1.pem")
+	require.NoError(t, err)
+	file, err := os.CreateTemp("", "PEMCertificate*")
+	require.NoError(t, err)
+	defer func() {
+		os.Remove(file.Name())
+	}()
+	file.Close()
+	err = certs.WriteCertificatesPEM(file.Name(), certificates, 0600)
+	require.NoError(t, err)
+	certificates2, err := certs.ReadCertificates(file.Name())
+	require.NoError(t, err)
+	require.Equal(t, certificates, certificates2)
+}
+
+func TestWriteDERCertificate(t *testing.T) {
+	certificates, err := certs.ReadCertificates("./testdata/isrgrootx1.der")
+	require.NoError(t, err)
+	file, err := os.CreateTemp("", "DERCertificate*")
+	require.NoError(t, err)
+	defer func() {
+		os.Remove(file.Name())
+	}()
+	file.Close()
+	err = certs.WriteCertificatesPEM(file.Name(), certificates, 0600)
+	require.NoError(t, err)
+	certificates2, err := certs.ReadCertificates(file.Name())
+	require.NoError(t, err)
+	require.Equal(t, certificates, certificates2)
 }
 
 func TestFetchPEMCertificates(t *testing.T) {
