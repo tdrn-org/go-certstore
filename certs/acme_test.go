@@ -25,9 +25,10 @@ func TestACMECertificateFactory(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 	config := loadAndPrepareACMEConfig(t, "./acme/testdata/acme-test.yaml", tempDir)
 	newCertificate(t, config, "Test1", "RSA 2048")
-	newCertificate(t, config, "Test2", "RSA 4096")
-	newCertificate(t, config, "Test3", "ECDSA P-256")
-	newCertificate(t, config, "Test4", "ECDSA P-384")
+	newCertificate(t, config, "Test1", "RSA 4096")
+	newCertificate(t, config, "Test1", "RSA 8192")
+	newCertificate(t, config, "Test2", "ECDSA P-256")
+	newCertificate(t, config, "Test2", "ECDSA P-384")
 }
 
 func newCertificate(t *testing.T, config *acme.Config, provider string, kpf string) {
