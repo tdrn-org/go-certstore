@@ -36,12 +36,6 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - name: Set up CI
-        run: |
-          go install github.com/jsha/minica@v1.0.2
-          $(go env GOPATH)/bin/minica -ca-cert pebble.minica.pem -ca-key pebble.minica.key.pem -domains localhost,pebble -ip-addresses 127.0.0.1
-          go install github.com/letsencrypt/pebble/v2/...@v2.4.0
-          $(go env GOPATH)/bin/pebble -config ./pebble-config.json > /dev/null 2>&1 &
       - name: Run Build
         run: make check
       - name: Run SonarQube
