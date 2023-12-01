@@ -65,5 +65,6 @@ func rsaKeyPairFactories() []KeyPairFactory {
 		NewRSAKeyPairFactory(2048),
 		NewRSAKeyPairFactory(3072),
 		NewRSAKeyPairFactory(4096),
+		NewRSAKeyPairFactory(8192),
 	}
 }
