@@ -88,7 +88,7 @@ func (backend *memoryBackend) List() (Names, error) {
 	backend.lock.RLock()
 	defer backend.lock.RUnlock()
 	names := make([]string, 0, len(backend.entries))
-	for name, _ := range backend.entries {
+	for name := range backend.entries {
 		names = append(names, name)
 	}
 	return &memoryBackendNames{names: names}, nil

@@ -8,8 +8,8 @@ package storage
 
 import "errors"
 
-type VersionLimit uint
-type Version uint
+type VersionLimit uint64
+type Version uint64
 
 type Names interface {
 	Next() string

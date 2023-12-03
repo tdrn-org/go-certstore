@@ -32,12 +32,37 @@ func TestMemoryStorageVersions(t *testing.T) {
 }
 
 func TestFSStorageNew(t *testing.T) {
-	path, err := os.MkdirTemp("", "TestFSStorage*")
+	path, err := os.MkdirTemp("", "TestFSStorageNew*")
 	require.NoError(t, err)
 	defer os.RemoveAll(path)
 	backend, err := storage.NewFSStorage(testVersionLimit, path)
 	require.NoError(t, err)
 	checkNew(t, backend)
+}
+func TestFSStoragePut(t *testing.T) {
+	path, err := os.MkdirTemp("", "TestFSStoragePut*")
+	require.NoError(t, err)
+	defer os.RemoveAll(path)
+	backend, err := storage.NewFSStorage(testVersionLimit, path)
+	require.NoError(t, err)
+	checkPut(t, backend)
+}
+func TestFSStorageGetX(t *testing.T) {
+	path, err := os.MkdirTemp("", "TestFSStoragePut*")
+	require.NoError(t, err)
+	defer os.RemoveAll(path)
+	backend, err := storage.NewFSStorage(testVersionLimit, path)
+	require.NoError(t, err)
+	checkGetX(t, backend)
+}
+
+func TestFSStorageGetVersions(t *testing.T) {
+	path, err := os.MkdirTemp("", "TestFSStoragePut*")
+	require.NoError(t, err)
+	defer os.RemoveAll(path)
+	backend, err := storage.NewFSStorage(testVersionLimit, path)
+	require.NoError(t, err)
+	checkVersions(t, backend)
 }
 
 func checkNew(t *testing.T, backend storage.Backend) {
