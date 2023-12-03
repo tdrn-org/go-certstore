@@ -53,7 +53,7 @@ func TestWriteDERCertificate(t *testing.T) {
 		os.Remove(file.Name())
 	}()
 	file.Close()
-	err = certs.WriteCertificatesPEM(file.Name(), certificates, 0600)
+	err = certs.WriteCertificatesDER(file.Name(), certificates, 0600)
 	require.NoError(t, err)
 	certificates2, err := certs.ReadCertificates(file.Name())
 	require.NoError(t, err)
