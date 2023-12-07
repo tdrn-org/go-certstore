@@ -16,7 +16,9 @@ type Names interface {
 }
 
 type Backend interface {
-	Put(name string, data []byte) (Version, error)
+	URI() string
+	Create(name string, data []byte) (string, error)
+	Update(name string, data []byte) (Version, error)
 	List() (Names, error)
 	Get(name string) ([]byte, error)
 	GetVersions(name string) ([]Version, error)

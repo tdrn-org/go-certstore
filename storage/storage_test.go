@@ -19,8 +19,8 @@ const testVersionLimit storage.VersionLimit = 2
 func TestMemoryStorageNew(t *testing.T) {
 	checkNew(t, storage.NewMemoryStorage(testVersionLimit))
 }
-func TestMemoryStoragePut(t *testing.T) {
-	checkPut(t, storage.NewMemoryStorage(testVersionLimit))
+func TestMemoryStorageCreateUpdate(t *testing.T) {
+	checkCreateUpdate(t, storage.NewMemoryStorage(testVersionLimit))
 }
 
 func TestMemoryStorageGetX(t *testing.T) {
@@ -39,16 +39,16 @@ func TestFSStorageNew(t *testing.T) {
 	require.NoError(t, err)
 	checkNew(t, backend)
 }
-func TestFSStoragePut(t *testing.T) {
+func TestFSStorageCreateUpdate(t *testing.T) {
 	path, err := os.MkdirTemp("", "TestFSStoragePut*")
 	require.NoError(t, err)
 	defer os.RemoveAll(path)
 	backend, err := storage.NewFSStorage(testVersionLimit, path)
 	require.NoError(t, err)
-	checkPut(t, backend)
+	checkCreateUpdate(t, backend)
 }
 func TestFSStorageGetX(t *testing.T) {
-	path, err := os.MkdirTemp("", "TestFSStoragePut*")
+	path, err := os.MkdirTemp("", "TestFSStorageGetX*")
 	require.NoError(t, err)
 	defer os.RemoveAll(path)
 	backend, err := storage.NewFSStorage(testVersionLimit, path)
@@ -56,8 +56,8 @@ func TestFSStorageGetX(t *testing.T) {
 	checkGetX(t, backend)
 }
 
-func TestFSStorageGetVersions(t *testing.T) {
-	path, err := os.MkdirTemp("", "TestFSStoragePut*")
+func TestFSStorageVersions(t *testing.T) {
+	path, err := os.MkdirTemp("", "TestFSStorageVersions*")
 	require.NoError(t, err)
 	defer os.RemoveAll(path)
 	backend, err := storage.NewFSStorage(testVersionLimit, path)
@@ -67,29 +67,32 @@ func TestFSStorageGetVersions(t *testing.T) {
 
 func checkNew(t *testing.T, backend storage.Backend) {
 	require.NotNil(t, backend)
+	require.NotEqual(t, "", backend.URI())
 }
 
-func checkPut(t *testing.T, backend storage.Backend) {
-	// checkPut1
-	name1 := "checkPut1"
+func checkCreateUpdate(t *testing.T, backend storage.Backend) {
+	// checkCreateUpdate
+	name := "checkCreateUpdate"
 	data1 := []byte{byte(1)}
-	version1, err := backend.Put(name1, data1)
+	version0, err := backend.Update(name, data1)
+	require.Equal(t, storage.ErrNotExist, err)
+	require.Equal(t, storage.Version(0), version0)
+	createdName1, err := backend.Create(name, data1)
 	require.NoError(t, err)
-	require.Equal(t, storage.Version(1), version1)
-	data, err := backend.Get(name1)
+	require.Equal(t, name, createdName1)
+	data, err := backend.Get(createdName1)
 	require.NoError(t, err)
 	require.Equal(t, data1, data)
-	// checkPut2
-	name2 := "checkPut2"
+	// checkCreateUpdate
 	data2 := []byte{byte(2)}
-	version2, err := backend.Put(name2, data2)
+	createdName2, err := backend.Create(name, data2)
 	require.NoError(t, err)
-	require.Equal(t, storage.Version(1), version2)
-	data, err = backend.Get(name2)
+	require.Equal(t, name+" (2)", createdName2)
+	data, err = backend.Get(createdName2)
 	require.NoError(t, err)
 	require.Equal(t, data2, data)
 	// list
-	checkList(t, backend, []string{name1, name2})
+	checkList(t, backend, []string{createdName1, createdName2})
 }
 
 func checkList(t *testing.T, backend storage.Backend, expected []string) {
@@ -126,15 +129,15 @@ func checkVersions(t *testing.T, backend storage.Backend) {
 	// version limit
 	name := "checkVersionLimit"
 	data1 := []byte{byte(1)}
-	version1, err := backend.Put(name, data1)
+	createdName, err := backend.Create(name, data1)
 	require.NoError(t, err)
-	require.Equal(t, storage.Version(1), version1)
+	require.Equal(t, name, createdName)
 	data2 := []byte{byte(2)}
-	version2, err := backend.Put(name, data2)
+	version2, err := backend.Update(name, data2)
 	require.NoError(t, err)
 	require.Equal(t, storage.Version(2), version2)
 	data3 := []byte{byte(3)}
-	version3, err := backend.Put(name, data3)
+	version3, err := backend.Update(name, data3)
 	require.NoError(t, err)
 	require.Equal(t, storage.Version(3), version3)
 	versions, err := backend.GetVersions(name)

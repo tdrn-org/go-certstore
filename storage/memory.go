@@ -7,7 +7,11 @@ package storage
 
 import (
 	"container/heap"
+	"fmt"
 	"sync"
+
+	"github.com/hdecarne-github/go-log"
+	"github.com/rs/zerolog"
 )
 
 type entryVersion struct {
@@ -49,38 +53,65 @@ func (versions *entryVersions) Pop() any {
 	return version
 }
 
+const memoryBackendURI = "memory://"
+
 type memoryBackend struct {
 	versionLimit VersionLimit
 	lock         sync.RWMutex
 	entries      map[string]entryVersions
+	logger       *zerolog.Logger
 }
 
-func (backend *memoryBackend) Put(name string, data []byte) (Version, error) {
+func (backend *memoryBackend) URI() string {
+	return memoryBackendURI
+}
+
+func (backend *memoryBackend) Create(name string, data []byte) (string, error) {
 	backend.lock.Lock()
 	defer backend.lock.Unlock()
-	versions, update := backend.entries[name]
-	var entry *entryVersion
-	if update {
-		versionCount := len(versions)
-		nextVersion := versions[versionCount-1].version + 1
-		if VersionLimit(versionCount)+1 > backend.versionLimit {
-			heap.Pop(&versions)
+	backend.logger.Debug().Msgf("creating entry '%s'...", name)
+	nextName := name
+	nextSuffix := 1
+	for {
+		versions, exists := backend.entries[nextName]
+		if exists {
+			nextSuffix++
+			nextName = fmt.Sprintf("%s (%d)", name, nextSuffix)
+			continue
 		}
-		entry = &entryVersion{
-			version: nextVersion,
-			data:    data,
-		}
-		heap.Push(&versions, entry)
-	} else {
-		entry = &entryVersion{
+		entry := &entryVersion{
 			version:   1,
 			data:      data,
 			heapIndex: 0,
 		}
 		versions = entryVersions{entry}
 		heap.Init(&versions)
+		backend.entries[nextName] = versions
+		backend.logger.Debug().Msgf("created entry '%s'", nextName)
+		return nextName, nil
 	}
+}
+
+func (backend *memoryBackend) Update(name string, data []byte) (Version, error) {
+	backend.lock.Lock()
+	defer backend.lock.Unlock()
+	backend.logger.Debug().Msgf("updating entry '%s'...", name)
+	versions, update := backend.entries[name]
+	if !update {
+		return 0, ErrNotExist
+	}
+	versionCount := len(versions)
+	nextVersion := versions[versionCount-1].version + 1
+	if VersionLimit(versionCount)+1 > backend.versionLimit {
+		heap.Pop(&versions)
+	}
+	entry := &entryVersion{
+		version: nextVersion,
+		data:    data,
+	}
+	heap.Push(&versions, entry)
 	backend.entries[name] = versions
+	backend.logger.Debug().Msgf("entry '%s' updated to version %d", name, entry.version)
 	return entry.version, nil
 }
 
@@ -149,8 +180,10 @@ func (backend *memoryBackend) GetVersion(name string, version Version) ([]byte, 
 }
 
 func NewMemoryStorage(versionLimit VersionLimit) Backend {
+	logger := log.RootLogger().With().Str("Backend", memoryBackendURI).Logger()
 	return &memoryBackend{
 		versionLimit: versionLimit,
 		entries:      make(map[string]entryVersions),
+		logger:       &logger,
 	}
 }
