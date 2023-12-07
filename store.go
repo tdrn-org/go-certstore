@@ -128,13 +128,13 @@ var ErrNoKey = errors.New("key does not exist")
 var ErrNoCertificate = errors.New("certificate does not exist")
 
 type RegistryEntry struct {
-	registry                  *Registry
-	name                      string
-	data                      *registryEntryData
-	decodedKey                crypto.PrivateKey
-	decodedCertificate        *x509.Certificate
-	decodedCertificateRequest *x509.CertificateRequest
-	decodedRevocationList     *x509.RevocationList
+	registry           *Registry
+	name               string
+	data               *registryEntryData
+	decodedKey         crypto.PrivateKey
+	decodedCertificate *x509.Certificate
+	// decodedCertificateRequest *x509.CertificateRequest
+	// decodedRevocationList     *x509.RevocationList
 }
 
 func (entry *RegistryEntry) Name() string {
