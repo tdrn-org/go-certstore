@@ -6,6 +6,7 @@
 package store_test
 
 import (
+	"crypto"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"math"
@@ -25,6 +26,7 @@ func TestNewStore(t *testing.T) {
 	registry, err := store.NewStore(storage.NewMemoryStorage(2))
 	require.NoError(t, err)
 	require.NotNil(t, registry)
+	require.Equal(t, "Registry[memory://]", registry.Name())
 }
 
 func TestCreateCertificate(t *testing.T) {
@@ -71,6 +73,31 @@ func TestCreateCertificateRequest(t *testing.T) {
 	require.NotNil(t, entryCertificate)
 }
 
+func TestResetRevocationList(t *testing.T) {
+	factory := newCertificateFactory()
+	registry, err := store.NewStore(storage.NewMemoryStorage(2))
+	require.NoError(t, err)
+	name := "TestResetRevocationList"
+	user := name + "User"
+	createdName, err := registry.CreateCertificate(name, factory, user)
+	require.NoError(t, err)
+	entry, err := registry.Entry(createdName)
+	require.NoError(t, err)
+	require.False(t, entry.HasRevocationList())
+	key, err := entry.Key(user)
+	require.NoError(t, err)
+	rlf := newRevocationListFactory(entry.Certificate(), key)
+	revocationList1, err := entry.ResetRevocationList(rlf, user)
+	require.NoError(t, err)
+	require.NotNil(t, revocationList1)
+	entry, err = registry.Entry(createdName)
+	require.NoError(t, err)
+	require.True(t, entry.HasRevocationList())
+	revocationList2 := entry.RevocationList()
+	require.NotNil(t, revocationList2)
+	require.Equal(t, revocationList1, revocationList2)
+}
+
 func newCertificateFactory() certs.CertificateFactory {
 	now := time.Now()
 	template := &x509.Certificate{
@@ -78,6 +105,8 @@ func newCertificateFactory() certs.CertificateFactory {
 		Subject: pkix.Name{
 			Organization: []string{now.Local().String()},
 		},
+		IsCA:      true,
+		KeyUsage:  x509.KeyUsageCRLSign,
 		NotBefore: now,
 		NotAfter:  now.Add(time.Hour),
 	}
@@ -92,4 +121,14 @@ func newCertificateRequestFactory() certs.CertificateRequestFactory {
 		},
 	}
 	return certs.NewRemoteCertificateRequestFactory(template, keys.ECDSA224.NewKeyPairFactory())
+}
+
+func newRevocationListFactory(issuer *x509.Certificate, signer crypto.PrivateKey) certs.RevocationListFactory {
+	now := time.Now()
+	template := &x509.RevocationList{
+		Number:     big.NewInt(1),
+		ThisUpdate: now,
+		NextUpdate: now.Add(24 * time.Hour),
+	}
+	return certs.NewLocalRevocationListFactory(template, issuer, signer)
 }
