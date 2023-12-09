@@ -47,7 +47,7 @@ func (factory *remoteCertificateRequestFactory) New() (crypto.PrivateKey, *x509.
 
 // NewRemoteCertificateRequestFactory creates a new certificate request factory for remotely signed certificates.
 func NewRemoteCertificateRequestFactory(template *x509.CertificateRequest, keyPairFactory keys.KeyPairFactory) CertificateRequestFactory {
-	logger := log.RootLogger().With().Str("CertificateRequestFactory", remoteCertificateRequestFactoryName).Logger()
+	logger := log.RootLogger().With().Str("Factory", remoteCertificateRequestFactoryName).Logger()
 	return &remoteCertificateRequestFactory{
 		template:       template,
 		keyPairFactory: keyPairFactory,

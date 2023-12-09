@@ -16,8 +16,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const ecdsaProviderName = "ECDSA"
-
 type ecdsaKeyPair struct {
 	alg Algorithm
 	key *algorithm.PrivateKey

@@ -68,7 +68,7 @@ func (factory *acmeCertificateFactory) New() (crypto.PrivateKey, *x509.Certifica
 // NewACMECertificateFactory creates a new certificate factory for ACME based certificates.
 func NewACMECertificateFactory(certificateRequest *acme.CertificateRequest, keyPairFactory keys.KeyPairFactory) CertificateFactory {
 	name := fmt.Sprintf(acmeCertficateFactoryNamePattern, certificateRequest.Provider.Name)
-	logger := log.RootLogger().With().Str("Provider", name).Logger()
+	logger := log.RootLogger().With().Str("Factory", name).Logger()
 	return &acmeCertificateFactory{
 		name:               name,
 		certificateRequest: certificateRequest,
