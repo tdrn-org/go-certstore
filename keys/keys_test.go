@@ -6,12 +6,15 @@
 package keys_test
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hdecarne-github/go-certstore/keys"
 	"github.com/stretchr/testify/require"
@@ -65,38 +68,69 @@ func TestPrivateEquals(t *testing.T) {
 	require.True(t, keys.PrivatesEqual(rsaPrivateKey, rsaPrivateKey))
 }
 
-func TestPublicFromPrivate(t *testing.T) {
-	ecdsaPrivateKey, err := ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
+func TestPublicFromECDSA(t *testing.T) {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
 	require.NoError(t, err)
-	ed25519PublicKey, ed25519PrivateKey, err := ed25519.GenerateKey(rand.Reader)
-	require.NoError(t, err)
-	rsaPrivateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	// ecdsa
-	require.True(t, keys.PublicsEqual(&ecdsaPrivateKey.PublicKey, keys.PublicFromPrivate(ecdsaPrivateKey)))
-
-	// ed25519
-	require.True(t, keys.PublicsEqual(ed25519PublicKey, keys.PublicFromPrivate(ed25519PrivateKey)))
-
-	// rsa
-	require.True(t, keys.PublicsEqual(&rsaPrivateKey.PublicKey, keys.PublicFromPrivate(rsaPrivateKey)))
+	require.True(t, keys.PublicsEqual(&privateKey.PublicKey, keys.PublicFromPrivate(privateKey)))
 }
 
-func TestProviders(t *testing.T) {
-	for _, providerName := range keys.Providers() {
-		providerKPFs := keys.ProviderKeyPairFactories(providerName)
-		require.NotNil(t, providerKPFs)
-		require.NotEqual(t, 0, len(providerKPFs))
-		for _, providerKPF := range providerKPFs {
-			kpf := keys.ProviderKeyPairFactory(providerKPF.Name())
-			require.NotNil(t, kpf)
-			require.Equal(t, providerKPF.Name(), kpf.Name())
-			keyPair, err := kpf.New()
-			require.NotNil(t, keyPair)
-			require.NoError(t, err)
-			require.NotNil(t, keyPair.Public())
-			require.NotNil(t, keyPair.Private())
-		}
+func TestPublicFromED25519(t *testing.T) {
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	require.True(t, keys.PublicsEqual(publicKey, keys.PublicFromPrivate(privateKey)))
+}
+
+func TestPublicFromRSA(t *testing.T) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	require.True(t, keys.PublicsEqual(&privateKey.PublicKey, keys.PublicFromPrivate(privateKey)))
+}
+
+func TestKeyFromPrivateECDSA(t *testing.T) {
+	privateKey, err := ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
+	require.NoError(t, err)
+	key := keys.KeyFromPrivate(privateKey)
+	checkKey(t, key, &privateKey.PublicKey, crypto.SHA256)
+}
+
+func TestKeyFromPrivateED25519(t *testing.T) {
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	key := keys.KeyFromPrivate(privateKey)
+	checkKey(t, key, publicKey, 0)
+}
+
+func TestKeyFromPrivateRSA(t *testing.T) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	key := keys.KeyFromPrivate(privateKey)
+	checkKey(t, key, &privateKey.PublicKey, crypto.SHA256)
+}
+
+func checkKey(t *testing.T, key keys.Key, publicKey crypto.PublicKey, hash crypto.Hash) {
+	require.True(t, keys.PublicsEqual(publicKey, key.Public()))
+	message := []byte("secret message")
+	digest := message
+	if hash != 0 {
+		digest = hash.New().Sum(message)[:hash.Size()]
+	}
+	signature, err := key.Sign(rand.Reader, digest, hash)
+	require.NoError(t, err)
+	require.True(t, key.Verify(signature, digest, hash))
+}
+
+func TestAlgs(t *testing.T) {
+	for _, alg := range keys.Algs() {
+		fmt.Printf("Generating %s", alg.Name())
+		start := time.Now()
+		kpf := alg.NewKeyPairFactory()
+		require.NotNil(t, kpf)
+		require.Equal(t, alg, kpf.Alg())
+		keypair, err := kpf.New()
+		elapsed := time.Since(start)
+		fmt.Printf(" (took: %s)\n", elapsed)
+		require.NoError(t, err)
+		require.NotNil(t, keypair)
+		require.Equal(t, alg, keypair.Alg())
 	}
 }

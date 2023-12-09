@@ -10,11 +10,18 @@ package keys
 
 import (
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/elliptic"
+	"crypto/rsa"
+	"fmt"
 	"reflect"
 )
 
 // KeyPair interface provides unified access to a key pair.
 type KeyPair interface {
+	// Name returns this [KeyPair]'s algorithm.
+	Alg() Algorithm
 	// Private returns the private key of a key pair.
 	Private() crypto.PrivateKey
 	// Public returns the public key of a key pair.
@@ -23,10 +30,33 @@ type KeyPair interface {
 
 // KeyPairFactory interface provides a unified way to create key pairs.
 type KeyPairFactory interface {
-	// Name returns the name of this factory.
-	Name() string
+	// Name returns this [KeyPairFactory]'s algorithm.
+	Alg() Algorithm
 	// New generates a new key pair.
 	New() (KeyPair, error)
+}
+
+// Key interface provides a unified way to key related serivces like [crypto.Signer].
+type Key interface {
+	crypto.Signer
+	Verify(signature []byte, digest []byte, opts crypto.SignerOpts) bool
+}
+
+// KeyFromPrivate wraps the given private key into a Key interface.
+func KeyFromPrivate(privateKey crypto.PrivateKey) Key {
+	ecdsaKey, ok := privateKey.(*ecdsa.PrivateKey)
+	if ok {
+		return wrapECDSAKey(ecdsaKey)
+	}
+	ed25519Key, ok := privateKey.(ed25519.PrivateKey)
+	if ok {
+		return wrapED25519Key(ed25519Key)
+	}
+	rsaKey, ok := privateKey.(*rsa.PrivateKey)
+	if ok {
+		return wrapRSAKey(rsaKey)
+	}
+	panic("unexpected private key type")
 }
 
 // PublicsEqual checks whether the two given public keys are equal.
@@ -45,36 +75,83 @@ func PublicFromPrivate(privateKey crypto.PrivateKey) crypto.PublicKey {
 	return publicKey
 }
 
-var providerNames = []string{}
-var providerKeyPairFactories = make(map[string][]KeyPairFactory, 0)
-var keyPairFactories = make(map[string]KeyPairFactory, 0)
+type Algorithm uint
 
-// Providers returns the known key providers (ECDSA, ED25519, RSA).
-func Providers() []string {
-	names := providerNames
-	return names
-}
+const (
+	RSA2048  Algorithm = 1
+	RSA3072  Algorithm = 2
+	RSA4096  Algorithm = 3
+	RSA8192  Algorithm = 4
+	ECDSA224 Algorithm = 5
+	ECDSA256 Algorithm = 6
+	ECDSA384 Algorithm = 7
+	ECDSA521 Algorithm = 8
+	ED25519  Algorithm = 9
+)
 
-// ProviderKeyPairFactories returns the [KeyPairFactory] instances for the given key provider.
-func ProviderKeyPairFactories(provider string) []KeyPairFactory {
-	return providerKeyPairFactories[provider]
-}
-
-// ProviderKeyPairFactory returns the [KeyPairFactory] instance for the given key pair factory name.
-func ProviderKeyPairFactory(keyPairFactoryName string) KeyPairFactory {
-	return keyPairFactories[keyPairFactoryName]
-}
-
-func init() {
-	providerNames = append(providerNames, ecdsaProviderName, ed25519ProviderName, rsaProviderName)
-	initKPFs(ecdsaProviderName, ecdsaKeyPairFactories())
-	initKPFs(ed25519ProviderName, ed25519KeyPairFactories())
-	initKPFs(rsaProviderName, rsaKeyPairFactories())
-}
-
-func initKPFs(provider string, kpfs []KeyPairFactory) {
-	providerKeyPairFactories[provider] = kpfs
-	for _, kpf := range kpfs {
-		keyPairFactories[kpf.Name()] = kpf
+// Algs returns the known algorithms.
+func Algs() []Algorithm {
+	return []Algorithm{
+		RSA2048,
+		RSA3072,
+		RSA4096,
+		RSA8192,
+		ECDSA224,
+		ECDSA256,
+		ECDSA384,
+		ECDSA521,
+		ED25519,
 	}
+}
+
+const unknownAlgorithmPattern = "uknown algorithm (%d)"
+
+// Name gets the algorithm's name.
+func (algorithm Algorithm) Name() string {
+	switch algorithm {
+	case RSA2048:
+		return "RSA2048"
+	case RSA3072:
+		return "RSA3072"
+	case RSA4096:
+		return "RSA4095"
+	case RSA8192:
+		return "RSA8192"
+	case ECDSA224:
+		return "ECDSA224"
+	case ECDSA256:
+		return "ECDSA256"
+	case ECDSA384:
+		return "ECDSA384"
+	case ECDSA521:
+		return "ECDSA521"
+	case ED25519:
+		return "ED25519"
+	}
+	panic(fmt.Sprintf(unknownAlgorithmPattern, algorithm))
+}
+
+// NewKeyPairFactory gets the [KeyPairFactory] for the given algorithm.
+func (alg Algorithm) NewKeyPairFactory() KeyPairFactory {
+	switch alg {
+	case RSA2048:
+		return newRSAKeyPairFactory(alg, 2048)
+	case RSA3072:
+		return newRSAKeyPairFactory(alg, 3072)
+	case RSA4096:
+		return newRSAKeyPairFactory(alg, 4096)
+	case RSA8192:
+		return newRSAKeyPairFactory(alg, 8192)
+	case ECDSA224:
+		return newECDSAKeyPairFactory(alg, elliptic.P224())
+	case ECDSA256:
+		return newECDSAKeyPairFactory(alg, elliptic.P256())
+	case ECDSA384:
+		return newECDSAKeyPairFactory(alg, elliptic.P384())
+	case ECDSA521:
+		return newECDSAKeyPairFactory(alg, elliptic.P521())
+	case ED25519:
+		return newED25519KeyPairFactory()
+	}
+	panic(fmt.Sprintf(unknownAlgorithmPattern, alg))
 }

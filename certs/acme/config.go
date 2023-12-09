@@ -158,20 +158,20 @@ func (providerConfig *ProviderConfig) newClientHelper(registrationFile *os.File,
 }
 
 func (providerConfig *ProviderConfig) keyTypeFromKeyPairFactory(keyPairFactory keys.KeyPairFactory) (certcrypto.KeyType, error) {
-	kpfName := keyPairFactory.Name()
-	switch kpfName {
-	case "ECDSA P-256":
-		return certcrypto.EC256, nil
-	case "ECDSA P-384":
-		return certcrypto.EC384, nil
-	case "RSA 2048":
+	alg := keyPairFactory.Alg()
+	switch alg {
+	case keys.RSA2048:
 		return certcrypto.RSA2048, nil
-	case "RSA 4096":
+	case keys.RSA4096:
 		return certcrypto.RSA4096, nil
-	case "RSA 8192":
+	case keys.RSA8192:
 		return certcrypto.RSA8192, nil
+	case keys.ECDSA256:
+		return certcrypto.EC256, nil
+	case keys.ECDSA384:
+		return certcrypto.EC384, nil
 	}
-	return "", fmt.Errorf("unrecognized key type '%s'", kpfName)
+	return "", fmt.Errorf("unrecognized key algorithm '%s'", alg.Name())
 }
 
 // A DomainConfig defines a domain pattern as well as the challenge types for the matching domains.

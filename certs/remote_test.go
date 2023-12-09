@@ -21,7 +21,7 @@ func TestRemoteCertificateRequestFactory(t *testing.T) {
 			Organization: []string{"TestLocalCertificateFactory"},
 		},
 	}
-	crf := certs.NewRemoteCertificateRequestFactory(template, keys.ProviderKeyPairFactories("ECDSA")[0])
+	crf := certs.NewRemoteCertificateRequestFactory(template, keys.ECDSA224.NewKeyPairFactory())
 	require.NotNil(t, crf)
 	require.Equal(t, "Remote", crf.Name())
 	privateKey, request, err := crf.New()

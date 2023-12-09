@@ -9,16 +9,19 @@ import (
 	"crypto"
 	"crypto/rand"
 	algorithm "crypto/rsa"
-	"strconv"
+	"io"
 
 	"github.com/hdecarne-github/go-log"
 	"github.com/rs/zerolog"
 )
 
-const rsaProviderName = "RSA"
-
 type rsaKeyPair struct {
+	alg Algorithm
 	key *algorithm.PrivateKey
+}
+
+func (keypair *rsaKeyPair) Alg() Algorithm {
+	return keypair.alg
 }
 
 func (keypair *rsaKeyPair) Public() crypto.PublicKey {
@@ -29,42 +32,51 @@ func (keypair *rsaKeyPair) Private() crypto.PrivateKey {
 	return keypair.key
 }
 
-// NewRSAKeyPair generates a new RSA key pair for the given bit size.
-func NewRSAKeyPair(bits int) (KeyPair, error) {
+func newRSAKeyPair(alg Algorithm, bits int) (KeyPair, error) {
 	key, err := algorithm.GenerateKey(rand.Reader, bits)
 	if err != nil {
 		return nil, err
 	}
-	return &rsaKeyPair{key: key}, nil
+	return &rsaKeyPair{alg: alg, key: key}, nil
 }
 
 type rsaKeyPairFactory struct {
+	alg    Algorithm
 	bits   int
-	name   string
 	logger *zerolog.Logger
 }
 
-func (factory *rsaKeyPairFactory) Name() string {
-	return factory.name
+func (factory *rsaKeyPairFactory) Alg() Algorithm {
+	return factory.alg
 }
 
 func (factory *rsaKeyPairFactory) New() (KeyPair, error) {
 	factory.logger.Info().Msg("generating new RSA key pair...")
-	return NewRSAKeyPair(factory.bits)
+	return newRSAKeyPair(factory.alg, factory.bits)
 }
 
-// NewRSAKeyPairFactory creates a new RSA key pair factory for the given bit size.
-func NewRSAKeyPairFactory(bits int) KeyPairFactory {
-	name := rsaProviderName + " " + strconv.Itoa(bits)
-	logger := log.RootLogger().With().Str("KeyPairFactory", name).Logger()
-	return &rsaKeyPairFactory{bits: bits, name: name, logger: &logger}
+func newRSAKeyPairFactory(alg Algorithm, bits int) KeyPairFactory {
+	logger := log.RootLogger().With().Str("Algorithm", alg.Name()).Logger()
+	return &rsaKeyPairFactory{alg: alg, bits: bits, logger: &logger}
 }
 
-func rsaKeyPairFactories() []KeyPairFactory {
-	return []KeyPairFactory{
-		NewRSAKeyPairFactory(2048),
-		NewRSAKeyPairFactory(3072),
-		NewRSAKeyPairFactory(4096),
-		NewRSAKeyPairFactory(8192),
-	}
+type rsaKey struct {
+	key *algorithm.PrivateKey
+}
+
+func (wrapped *rsaKey) Public() crypto.PublicKey {
+	return &wrapped.key.PublicKey
+}
+
+func (wrapped *rsaKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
+	hash := opts.HashFunc()
+	return algorithm.SignPKCS1v15(rand, wrapped.key, hash, digest)
+}
+
+func (wrapped *rsaKey) Verify(signature []byte, digest []byte, opts crypto.SignerOpts) bool {
+	return algorithm.VerifyPKCS1v15(&wrapped.key.PublicKey, opts.HashFunc(), digest, signature) == nil
+}
+
+func wrapRSAKey(key *algorithm.PrivateKey) Key {
+	return &rsaKey{key: key}
 }

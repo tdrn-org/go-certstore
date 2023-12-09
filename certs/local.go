@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"fmt"
+	"math/big"
 
 	"github.com/hdecarne-github/go-certstore/keys"
 	"github.com/hdecarne-github/go-log"
@@ -35,15 +36,18 @@ func (factory *localCertificateFactory) New() (crypto.PrivateKey, *x509.Certific
 	if err != nil {
 		return nil, nil, err
 	}
+	createTemplate := factory.template
 	var certificateBytes []byte
 	if factory.parent != nil {
 		// parent signed
 		factory.logger.Info().Msg("creating signed local X.509 certificate...")
+		createTemplate.SerialNumber = big.NewInt(zerolog.TimestampFunc().UnixMicro())
 		certificateBytes, err = x509.CreateCertificate(rand.Reader, factory.template, factory.parent, keyPair.Public(), factory.signer)
 	} else {
 		// self-signed
 		factory.logger.Info().Msg("creating self-signed local X.509 certificate...")
-		certificateBytes, err = x509.CreateCertificate(rand.Reader, factory.template, factory.template, keyPair.Public(), keyPair.Private())
+		createTemplate.SerialNumber = big.NewInt(1)
+		certificateBytes, err = x509.CreateCertificate(rand.Reader, createTemplate, factory.template, keyPair.Public(), keyPair.Private())
 	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create certificate (cause: %w)", err)
@@ -64,5 +68,40 @@ func NewLocalCertificateFactory(template *x509.Certificate, keyPairFactory keys.
 		parent:         parent,
 		signer:         signer,
 		logger:         &logger,
+	}
+}
+
+type localRevocationListFactory struct {
+	template *x509.RevocationList
+	issuer   *x509.Certificate
+	signer   crypto.PrivateKey
+	logger   *zerolog.Logger
+}
+
+func (factory *localRevocationListFactory) Name() string {
+	return localCertificateFactoryName
+}
+
+func (factory *localRevocationListFactory) New() (*x509.RevocationList, error) {
+	factory.logger.Info().Msg("creating local X.509 revocation list...")
+	revocationListBytes, err := x509.CreateRevocationList(rand.Reader, factory.template, factory.issuer, keys.KeyFromPrivate(factory.signer))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create revocation list (cause: %w)", err)
+	}
+	revocationList, err := x509.ParseRevocationList(revocationListBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed parse revocation list bytes (cause: %w)", err)
+	}
+	return revocationList, nil
+}
+
+// NewLocalRevocationListFactory creates a new revocation list factory for locally issued certificates.
+func NewLocalRevocationListFactory(template *x509.RevocationList, issuer *x509.Certificate, signer crypto.PrivateKey) RevocationListFactory {
+	logger := log.RootLogger().With().Str("Factory", localCertificateFactoryName).Logger()
+	return &localRevocationListFactory{
+		template: template,
+		issuer:   issuer,
+		signer:   signer,
+		logger:   &logger,
 	}
 }

@@ -40,12 +40,34 @@ func TestCreateCertificate(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, entry)
 	require.True(t, entry.HasKey())
-	entryKey, err := entry.Key()
+	entryKey, err := entry.Key(user)
 	require.NoError(t, err)
 	require.NotNil(t, entryKey)
 	require.True(t, entry.HasCertificate())
-	entryCertificate, err := entry.Certificate()
+	entryCertificate := entry.Certificate()
+	require.NotNil(t, entryCertificate)
+	require.True(t, entry.IsRoot())
+	require.True(t, entry.CanIssue())
+}
+
+func TestCreateCertificateRequest(t *testing.T) {
+	factory := newCertificateRequestFactory()
+	registry, err := store.NewStore(storage.NewMemoryStorage(2))
 	require.NoError(t, err)
+	name := "TestCreateCertificateRequest"
+	user := name + "User"
+	createdName, err := registry.CreateCertificateRequest(name, factory, user)
+	require.NoError(t, err)
+	require.Equal(t, name, createdName)
+	entry, err := registry.Entry(createdName)
+	require.NoError(t, err)
+	require.NotNil(t, entry)
+	require.True(t, entry.HasKey())
+	entryKey, err := entry.Key(user)
+	require.NoError(t, err)
+	require.NotNil(t, entryKey)
+	require.True(t, entry.HasCertificateRequest())
+	entryCertificate := entry.CertificateRequest()
 	require.NotNil(t, entryCertificate)
 }
 
@@ -59,5 +81,15 @@ func newCertificateFactory() certs.CertificateFactory {
 		NotBefore: now,
 		NotAfter:  now.Add(time.Hour),
 	}
-	return certs.NewLocalCertificateFactory(template, keys.ProviderKeyPairFactory("ECDSA P-224"), nil, nil)
+	return certs.NewLocalCertificateFactory(template, keys.ECDSA224.NewKeyPairFactory(), nil, nil)
+}
+
+func newCertificateRequestFactory() certs.CertificateRequestFactory {
+	now := time.Now()
+	template := &x509.CertificateRequest{
+		Subject: pkix.Name{
+			Organization: []string{now.Local().String()},
+		},
+	}
+	return certs.NewRemoteCertificateRequestFactory(template, keys.ECDSA224.NewKeyPairFactory())
 }

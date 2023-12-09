@@ -9,16 +9,20 @@ import (
 	"crypto"
 	algorithm "crypto/ed25519"
 	"crypto/rand"
+	"io"
 
 	"github.com/hdecarne-github/go-log"
 	"github.com/rs/zerolog"
 )
 
-const ed25519ProviderName = "ED25519"
-
 type ed25519KeyPair struct {
+	alg     Algorithm
 	public  algorithm.PublicKey
 	private algorithm.PrivateKey
+}
+
+func (keypair *ed25519KeyPair) Alg() Algorithm {
+	return keypair.alg
 }
 
 func (keypair *ed25519KeyPair) Public() crypto.PublicKey {
@@ -29,36 +33,48 @@ func (keypair *ed25519KeyPair) Private() crypto.PrivateKey {
 	return keypair.private
 }
 
-// NewED25519KeyPair generates a new ED25519 key pair.
-func NewED25519KeyPair() (KeyPair, error) {
+func newED25519KeyPair() (KeyPair, error) {
 	public, private, err := algorithm.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, err
 	}
-	return &ed25519KeyPair{public: public, private: private}, nil
+	return &ed25519KeyPair{alg: ED25519, public: public, private: private}, nil
 }
 
 type ed25519KeyPairFactory struct {
 	logger *zerolog.Logger
 }
 
-func (factory *ed25519KeyPairFactory) Name() string {
-	return ed25519ProviderName
+func (factory *ed25519KeyPairFactory) Alg() Algorithm {
+	return ED25519
 }
 
 func (factory *ed25519KeyPairFactory) New() (KeyPair, error) {
 	factory.logger.Info().Msg("generating new ED25519 key pair...")
-	return NewED25519KeyPair()
+	return newED25519KeyPair()
 }
 
-// NewED25519KeyPairFactory creates a new ED25519 key pair factory.
-func NewED25519KeyPairFactory() KeyPairFactory {
-	logger := log.RootLogger().With().Str("KeyPairFactory", ed25519ProviderName).Logger()
+func newED25519KeyPairFactory() KeyPairFactory {
+	logger := log.RootLogger().With().Str("Algorithm", ED25519.Name()).Logger()
 	return &ed25519KeyPairFactory{logger: &logger}
 }
 
-func ed25519KeyPairFactories() []KeyPairFactory {
-	return []KeyPairFactory{
-		NewED25519KeyPairFactory(),
-	}
+type ed25519Key struct {
+	key algorithm.PrivateKey
+}
+
+func (wrapped *ed25519Key) Public() crypto.PublicKey {
+	return wrapped.key.Public()
+}
+
+func (wrapped *ed25519Key) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
+	return wrapped.key.Sign(rand, digest, opts)
+}
+
+func (wrapped *ed25519Key) Verify(signature []byte, digest []byte, opts crypto.SignerOpts) bool {
+	return algorithm.Verify(wrapped.key.Public().(algorithm.PublicKey), digest, signature)
+}
+
+func wrapED25519Key(key algorithm.PrivateKey) Key {
+	return &ed25519Key{key: key}
 }

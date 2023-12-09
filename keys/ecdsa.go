@@ -10,6 +10,7 @@ import (
 	algorithm "crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"io"
 
 	"github.com/hdecarne-github/go-log"
 	"github.com/rs/zerolog"
@@ -18,7 +19,12 @@ import (
 const ecdsaProviderName = "ECDSA"
 
 type ecdsaKeyPair struct {
+	alg Algorithm
 	key *algorithm.PrivateKey
+}
+
+func (keypair *ecdsaKeyPair) Alg() Algorithm {
+	return keypair.alg
 }
 
 func (keypair *ecdsaKeyPair) Public() crypto.PublicKey {
@@ -29,42 +35,50 @@ func (keypair *ecdsaKeyPair) Private() crypto.PrivateKey {
 	return keypair.key
 }
 
-// NewECDSAKeyPair generates a new ECDSA key pair for the given curve.
-func NewECDSAKeyPair(curve elliptic.Curve) (KeyPair, error) {
+func newECDSAKeyPair(alg Algorithm, curve elliptic.Curve) (KeyPair, error) {
 	key, err := algorithm.GenerateKey(curve, rand.Reader)
 	if err != nil {
 		return nil, err
 	}
-	return &ecdsaKeyPair{key: key}, nil
+	return &ecdsaKeyPair{alg: alg, key: key}, nil
 }
 
 type ecdsaKeyPairFactory struct {
+	alg    Algorithm
 	curve  elliptic.Curve
-	name   string
 	logger *zerolog.Logger
 }
 
-func (factory *ecdsaKeyPairFactory) Name() string {
-	return factory.name
+func (factory *ecdsaKeyPairFactory) Alg() Algorithm {
+	return factory.alg
 }
 
 func (factory *ecdsaKeyPairFactory) New() (KeyPair, error) {
 	factory.logger.Info().Msg("generating new ECSDA key pair...")
-	return NewECDSAKeyPair(factory.curve)
+	return newECDSAKeyPair(factory.alg, factory.curve)
 }
 
-// NewECDSAKeyPairFactory creates a new ECDSA key pair factory for the given curve.
-func NewECDSAKeyPairFactory(curve elliptic.Curve) KeyPairFactory {
-	name := ecdsaProviderName + " " + curve.Params().Name
-	logger := log.RootLogger().With().Str("KeyPairFactory", name).Logger()
-	return &ecdsaKeyPairFactory{curve: curve, name: name, logger: &logger}
+func newECDSAKeyPairFactory(alg Algorithm, curve elliptic.Curve) KeyPairFactory {
+	logger := log.RootLogger().With().Str("Algorithm", alg.Name()).Logger()
+	return &ecdsaKeyPairFactory{alg: alg, curve: curve, logger: &logger}
 }
 
-func ecdsaKeyPairFactories() []KeyPairFactory {
-	return []KeyPairFactory{
-		NewECDSAKeyPairFactory(elliptic.P224()),
-		NewECDSAKeyPairFactory(elliptic.P256()),
-		NewECDSAKeyPairFactory(elliptic.P384()),
-		NewECDSAKeyPairFactory(elliptic.P521()),
-	}
+type ecdsaKey struct {
+	key *algorithm.PrivateKey
+}
+
+func (wrapped *ecdsaKey) Public() crypto.PublicKey {
+	return &wrapped.key.PublicKey
+}
+
+func (wrapped *ecdsaKey) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
+	return algorithm.SignASN1(rand, wrapped.key, opts.HashFunc().New().Sum(digest))
+}
+
+func (wrapped *ecdsaKey) Verify(signature []byte, digest []byte, opts crypto.SignerOpts) bool {
+	return algorithm.VerifyASN1(&wrapped.key.PublicKey, digest, signature)
+}
+
+func wrapECDSAKey(key *algorithm.PrivateKey) Key {
+	return &ecdsaKey{key: key}
 }

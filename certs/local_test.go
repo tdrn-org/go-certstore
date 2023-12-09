@@ -8,9 +8,7 @@ package certs_test
 import (
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"math"
 	"math/big"
-	"math/rand"
 	"testing"
 	"time"
 
@@ -21,36 +19,58 @@ import (
 
 func TestLocalCertificateFactory(t *testing.T) {
 	// self-signed
-	now1 := time.Now()
-	template1 := &x509.Certificate{
-		SerialNumber: big.NewInt(rand.Int63n(math.MaxInt64)),
-		Subject: pkix.Name{
-			Organization: []string{"Test1"},
-		},
-		NotBefore: now1,
-		NotAfter:  now1.Add(time.Hour),
-	}
-	cf1 := certs.NewLocalCertificateFactory(template1, keys.ProviderKeyPairFactory("ECDSA P-224"), nil, nil)
+	template1 := newCertificateTemplate("Test1")
+	template1.IsCA = true
+	template1.KeyUsage = template1.KeyUsage | x509.KeyUsageCertSign
+	cf1 := certs.NewLocalCertificateFactory(template1, keys.ECDSA224.NewKeyPairFactory(), nil, nil)
 	require.NotNil(t, cf1)
 	require.Equal(t, "Local", cf1.Name())
 	privateKey1, cert1, err := cf1.New()
+	require.NoError(t, err)
 	require.NotNil(t, privateKey1)
 	require.NotNil(t, cert1)
-	require.NoError(t, err)
+	require.Equal(t, big.NewInt(1), cert1.SerialNumber)
+	require.Equal(t, template1.Subject.Organization, cert1.Subject.Organization)
 	// signed
-	now2 := time.Now()
-	template2 := &x509.Certificate{
-		SerialNumber: big.NewInt(rand.Int63n(math.MaxInt64)),
-		Subject: pkix.Name{
-			Organization: []string{"Test2"},
-		},
-		NotBefore: now2,
-		NotAfter:  now2.Add(time.Hour),
-	}
-	cf2 := certs.NewLocalCertificateFactory(template2, keys.ProviderKeyPairFactory("ECDSA P-224"), cert1, privateKey1)
+	template2 := newCertificateTemplate("Test2")
+	cf2 := certs.NewLocalCertificateFactory(template2, keys.ECDSA224.NewKeyPairFactory(), cert1, privateKey1)
 	require.NotNil(t, cf2)
 	privateKey2, cert2, err := cf2.New()
+	require.NoError(t, err)
 	require.NotNil(t, privateKey2)
 	require.NotNil(t, cert2)
+	require.Equal(t, template2.Subject.Organization, cert2.Subject.Organization)
+}
+func TestLocalRevocationListFactory(t *testing.T) {
+	issuerTemplate := newCertificateTemplate("Issuer")
+	issuerTemplate.IsCA = true
+	issuerTemplate.KeyUsage = issuerTemplate.KeyUsage | x509.KeyUsageCRLSign
+	issuerFactory := certs.NewLocalCertificateFactory(issuerTemplate, keys.ECDSA224.NewKeyPairFactory(), nil, nil)
+	signer, issuer, err := issuerFactory.New()
 	require.NoError(t, err)
+	template := newRevocationListEmplate(1)
+	rlf := certs.NewLocalRevocationListFactory(template, issuer, signer)
+	revocationList, err := rlf.New()
+	require.NoError(t, err)
+	require.NotNil(t, revocationList)
+}
+
+func newCertificateTemplate(org string) *x509.Certificate {
+	now := time.Now()
+	return &x509.Certificate{
+		Subject: pkix.Name{
+			Organization: []string{org},
+		},
+		NotBefore: now,
+		NotAfter:  now.Add(time.Hour),
+	}
+}
+
+func newRevocationListEmplate(number int64) *x509.RevocationList {
+	now := time.Now()
+	return &x509.RevocationList{
+		Number:     big.NewInt(number),
+		ThisUpdate: now,
+		NextUpdate: now.Add(24 * time.Hour),
+	}
 }

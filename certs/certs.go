@@ -26,3 +26,11 @@ type CertificateRequestFactory interface {
 	// New creates a new X.509 certificate request.
 	New() (crypto.PrivateKey, *x509.CertificateRequest, error)
 }
+
+// RevocationListFactory interface provides a unified way to create X.509 revocation lists.
+type RevocationListFactory interface {
+	// Name returns the name of this factory.
+	Name() string
+	// New creates a new X.509 revocation list.
+	New() (*x509.RevocationList, error)
+}
