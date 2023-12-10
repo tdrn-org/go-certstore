@@ -132,5 +132,7 @@ func TestAlgs(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, keypair)
 		require.Equal(t, alg, keypair.Alg())
+		require.NotNil(t, keypair.Private())
+		require.NotNil(t, keypair.Public())
 	}
 }

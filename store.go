@@ -23,11 +23,11 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type AuditLog int
+type Audit int
 
 const (
-	AuditCreate AuditLog = 1
-	AuditAccess AuditLog = 2
+	AuditCreate Audit = 1
+	AuditAccess Audit = 2
 )
 
 type Registry struct {
