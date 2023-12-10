@@ -160,7 +160,7 @@ func newCertificateFactory(issuerEntry *store.RegistryEntry, user string) certs.
 		Subject: pkix.Name{
 			Organization: []string{now.Local().String()},
 		},
-		IsCA:      issuerEntry != nil,
+		IsCA:      issuerEntry == nil,
 		KeyUsage:  x509.KeyUsageCRLSign,
 		NotBefore: now,
 		NotAfter:  now.Add(time.Hour),
