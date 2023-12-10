@@ -110,11 +110,15 @@ func TestEntries(t *testing.T) {
 	registry, err := store.NewStore(backend)
 	require.NoError(t, err)
 	user := "TestEntriesUser"
+	start := time.Now()
 	populateTestStore(t, registry, user, 10)
+	elapsed := time.Since(start)
+	fmt.Printf("Store populated (took: %s)\n", elapsed)
 	entries, err := registry.Entries()
 	require.NoError(t, err)
 	totalCount := 0
 	rootCount := 0
+	start = time.Now()
 	for {
 		nextEntry, err := entries.Next()
 		require.NoError(t, err)
@@ -126,6 +130,8 @@ func TestEntries(t *testing.T) {
 			rootCount++
 		}
 	}
+	elapsed = time.Since(start)
+	fmt.Printf("Store entries listed (took: %s)\n", elapsed)
 	require.Equal(t, 1110, totalCount)
 	require.Equal(t, 10, rootCount)
 }
@@ -141,6 +147,13 @@ func createTestRootEntries(t *testing.T, registry *store.Registry, user string, 
 		createdName, err := registry.CreateCertificate(name, factory, user)
 		require.NoError(t, err)
 		require.Equal(t, name, createdName)
+		entry, err := registry.Entry(createdName)
+		require.NoError(t, err)
+		entryCert := entry.Certificate()
+		entryKey, err := entry.Key(user)
+		require.NoError(t, err)
+		_, err = entry.ResetRevocationList(newTestRevocationListFactory(entryCert, entryKey), user)
+		require.NoError(t, err)
 		createTestIntermediateEntries(t, registry, createdName, user, count)
 	}
 }
