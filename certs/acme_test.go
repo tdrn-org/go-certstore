@@ -24,14 +24,14 @@ func TestACMECertificateFactory(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 	config := loadAndPrepareACMEConfig(t, "./acme/testdata/acme-test.yaml", tempDir)
-	newCertificate(t, config, "Test1", keys.RSA2048)
-	newCertificate(t, config, "Test1", keys.RSA4096)
-	newCertificate(t, config, "Test1", keys.RSA8192)
-	newCertificate(t, config, "Test2", keys.ECDSA256)
-	newCertificate(t, config, "Test2", keys.ECDSA384)
+	newACMECertificate(t, config, "Test1", keys.RSA2048)
+	newACMECertificate(t, config, "Test1", keys.RSA4096)
+	newACMECertificate(t, config, "Test1", keys.RSA8192)
+	newACMECertificate(t, config, "Test2", keys.ECDSA256)
+	newACMECertificate(t, config, "Test2", keys.ECDSA384)
 }
 
-func newCertificate(t *testing.T, config *acme.Config, provider string, alg keys.Algorithm) {
+func newACMECertificate(t *testing.T, config *acme.Config, provider string, alg keys.Algorithm) {
 	host, err := os.Hostname()
 	require.NoError(t, err)
 	request, err := config.ResolveCertificateRequest([]string{host}, provider)

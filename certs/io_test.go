@@ -6,7 +6,6 @@
 package certs_test
 
 import (
-	"crypto/x509/pkix"
 	"os"
 	"testing"
 
@@ -79,22 +78,4 @@ func TestServerCertificates(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, certs)
 	require.Equal(t, 2, len(certs))
-}
-
-func TestParseDN(t *testing.T) {
-	dn := &pkix.Name{
-		CommonName:         "CommonName",
-		Locality:           []string{"Locality"},
-		Country:            []string{"Country"},
-		Organization:       []string{"Organization"},
-		OrganizationalUnit: []string{"OrganizationUnit"},
-		PostalCode:         []string{"PostalCode"},
-		Province:           []string{"Province"},
-		SerialNumber:       "SerialNumber",
-		StreetAddress:      []string{"StreetAddress"},
-	}
-	parsed, err := certs.ParseDN(dn.String())
-	require.NoError(t, err)
-	require.NotNil(t, parsed)
-	require.Equal(t, dn.String(), parsed.String())
 }

@@ -41,13 +41,13 @@ func (factory *localCertificateFactory) New() (crypto.PrivateKey, *x509.Certific
 	if factory.parent != nil {
 		// parent signed
 		factory.logger.Info().Msg("creating signed local X.509 certificate...")
-		createTemplate.SerialNumber = big.NewInt(zerolog.TimestampFunc().UnixMicro())
-		certificateBytes, err = x509.CreateCertificate(rand.Reader, factory.template, factory.parent, keyPair.Public(), factory.signer)
+		createTemplate.SerialNumber = nextSerialNumber()
+		certificateBytes, err = x509.CreateCertificate(rand.Reader, createTemplate, createTemplate, keyPair.Public(), factory.signer)
 	} else {
 		// self-signed
 		factory.logger.Info().Msg("creating self-signed local X.509 certificate...")
 		createTemplate.SerialNumber = big.NewInt(1)
-		certificateBytes, err = x509.CreateCertificate(rand.Reader, createTemplate, factory.template, keyPair.Public(), keyPair.Private())
+		certificateBytes, err = x509.CreateCertificate(rand.Reader, createTemplate, createTemplate, keyPair.Public(), keyPair.Private())
 	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create certificate (cause: %w)", err)

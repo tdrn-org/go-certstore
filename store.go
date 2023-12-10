@@ -200,14 +200,7 @@ func (entry *RegistryEntry) IsRoot() bool {
 	if entry.certificate == nil {
 		return false
 	}
-	roots := x509.NewCertPool()
-	roots.AddCert(entry.certificate)
-	verifyOpts := x509.VerifyOptions{
-		Roots:       roots,
-		CurrentTime: entry.certificate.NotBefore,
-	}
-	_, err := entry.certificate.Verify(verifyOpts)
-	return err == nil
+	return certs.IsRoot(entry.certificate)
 }
 
 func (entry *RegistryEntry) CanIssue() bool {

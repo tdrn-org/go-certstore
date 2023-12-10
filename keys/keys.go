@@ -78,15 +78,15 @@ func PublicFromPrivate(privateKey crypto.PrivateKey) crypto.PublicKey {
 type Algorithm uint
 
 const (
-	RSA2048  Algorithm = 1
-	RSA3072  Algorithm = 2
-	RSA4096  Algorithm = 3
-	RSA8192  Algorithm = 4
-	ECDSA224 Algorithm = 5
-	ECDSA256 Algorithm = 6
-	ECDSA384 Algorithm = 7
-	ECDSA521 Algorithm = 8
-	ED25519  Algorithm = 9
+	RSA2048  Algorithm = 1 // RSA cipher 2048 bit key lenght
+	RSA3072  Algorithm = 2 // RSA cipher 3072 bit key lenght
+	RSA4096  Algorithm = 3 // RSA cipher 4096 bit key lenght
+	RSA8192  Algorithm = 4 // RSA cipher 8192 bit key lenght
+	ECDSA224 Algorithm = 5 // ECDSA cipher P-224 curve
+	ECDSA256 Algorithm = 6 // ECDSA cipher P-256 curve
+	ECDSA384 Algorithm = 7 // ECDSA cipher P-384 curve
+	ECDSA521 Algorithm = 8 // ECDSA cipher P-521 curve
+	ED25519  Algorithm = 9 // ED25519 cipher
 )
 
 // Algs returns the known algorithms.

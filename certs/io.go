@@ -8,15 +8,11 @@ package certs
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-
-	"github.com/go-ldap/ldap/v3"
 )
 
 // ReadCertificates reads X.509 certificates from the given file.
@@ -133,55 +129,4 @@ func verifyPeerCertificate(rawCerts [][]byte, verifiedChains [][]*x509.Certifica
 	}
 	err.Err = fmt.Errorf("%d peer certifcates received", len(err.UnverifiedCertificates))
 	return &err
-}
-
-// ParseDN parses a X.509 certificate's Distinguished Name (DN) attribute.
-func ParseDN(dn string) (*pkix.Name, error) {
-	ldapDN, err := ldap.ParseDN(dn)
-	if err != nil {
-		return nil, fmt.Errorf("invalid DN '%s' (cause: %w)", dn, err)
-	}
-	rdns := make([]pkix.RelativeDistinguishedNameSET, 0)
-	for _, ldapRDN := range ldapDN.RDNs {
-		rdn := make([]pkix.AttributeTypeAndValue, 0)
-		for _, ldapRDNAttribute := range ldapRDN.Attributes {
-			rdnType, err := parseLdapRDNType(ldapRDNAttribute.Type)
-			if err != nil {
-				return nil, err
-			}
-			rdn = append(rdn, pkix.AttributeTypeAndValue{Type: rdnType, Value: ldapRDNAttribute.Value})
-		}
-		rdns = append(rdns, rdn)
-	}
-	parsedDN := &pkix.Name{}
-	parsedDN.FillFromRDNSequence((*pkix.RDNSequence)(&rdns))
-	return parsedDN, nil
-}
-
-func parseLdapRDNType(ldapRDNType string) (asn1.ObjectIdentifier, error) {
-	switch ldapRDNType {
-	case "CN":
-		return []int{2, 5, 4, 3}, nil
-	case "SERIALNUMBER":
-		return []int{2, 5, 4, 5}, nil
-	case "C":
-		return []int{2, 5, 4, 6}, nil
-	case "L":
-		return []int{2, 5, 4, 7}, nil
-	case "ST":
-		return []int{2, 5, 4, 8}, nil
-	case "STREET":
-		return []int{2, 5, 4, 9}, nil
-	case "O":
-		return []int{2, 5, 4, 10}, nil
-	case "OU":
-		return []int{2, 5, 4, 11}, nil
-	case "POSTALCODE":
-		return []int{2, 5, 4, 17}, nil
-	case "UID":
-		return []int{0, 9, 2342, 19200300, 100, 1, 1}, nil
-	case "DC":
-		return []int{0, 9, 2342, 19200300, 100, 1, 25}, nil
-	}
-	return nil, fmt.Errorf("unrecognized RDN type '%s'", ldapRDNType)
 }

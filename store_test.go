@@ -23,6 +23,7 @@ import (
 )
 
 const testVersionLimit storage.VersionLimit = 2
+const testKeyAlg = keys.ECDSA256
 
 func TestNewStore(t *testing.T) {
 	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit))
@@ -34,9 +35,9 @@ func TestNewStore(t *testing.T) {
 func TestCreateCertificate(t *testing.T) {
 	name := "TestCreateCertificate"
 	user := name + "User"
-	factory := newCertificateFactory(nil, user)
 	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit))
 	require.NoError(t, err)
+	factory := newTestRootCertificateFactory(name)
 	createdName, err := registry.CreateCertificate(name, factory, user)
 	require.NoError(t, err)
 	require.Equal(t, name, createdName)
@@ -55,11 +56,11 @@ func TestCreateCertificate(t *testing.T) {
 }
 
 func TestCreateCertificateRequest(t *testing.T) {
-	factory := newCertificateRequestFactory()
-	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit))
-	require.NoError(t, err)
 	name := "TestCreateCertificateRequest"
 	user := name + "User"
+	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit))
+	require.NoError(t, err)
+	factory := newTestCertificateRequestFactory(name)
 	createdName, err := registry.CreateCertificateRequest(name, factory, user)
 	require.NoError(t, err)
 	require.Equal(t, name, createdName)
@@ -78,18 +79,18 @@ func TestCreateCertificateRequest(t *testing.T) {
 func TestResetRevocationList(t *testing.T) {
 	name := "TestResetRevocationList"
 	user := name + "User"
-	factory := newCertificateFactory(nil, user)
 	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit))
 	require.NoError(t, err)
-	createdName, err := registry.CreateCertificate(name, factory, user)
+	certFactory := newTestRootCertificateFactory(name)
+	createdName, err := registry.CreateCertificate(name, certFactory, user)
 	require.NoError(t, err)
 	entry, err := registry.Entry(createdName)
 	require.NoError(t, err)
 	require.False(t, entry.HasRevocationList())
 	key, err := entry.Key(user)
 	require.NoError(t, err)
-	rlf := newRevocationListFactory(entry.Certificate(), key)
-	revocationList1, err := entry.ResetRevocationList(rlf, user)
+	revocationListFactory := newTestRevocationListFactory(entry.Certificate(), key)
+	revocationList1, err := entry.ResetRevocationList(revocationListFactory, user)
 	require.NoError(t, err)
 	require.NotNil(t, revocationList1)
 	entry, err = registry.Entry(createdName)
@@ -109,87 +110,129 @@ func TestEntries(t *testing.T) {
 	registry, err := store.NewStore(backend)
 	require.NoError(t, err)
 	user := "TestEntriesUser"
-	// roots
-	for i := 0; i < 10; i++ {
-		createEntries(t, registry, "Root", nil, user)
-	}
-	// intermediates
+	populateTestStore(t, registry, user, 10)
 	entries, err := registry.Entries()
 	require.NoError(t, err)
+	totalCount := 0
+	rootCount := 0
 	for {
-		next, err := entries.Next()
+		nextEntry, err := entries.Next()
 		require.NoError(t, err)
-		if next == nil {
+		if nextEntry == nil {
 			break
 		}
-		if next.IsRoot() {
-			createEntries(t, registry, "Intermediate", next, user)
+		totalCount++
+		if nextEntry.IsRoot() {
+			rootCount++
 		}
 	}
-	// leafs
-	entries, err = registry.Entries()
+	require.Equal(t, 1110, totalCount)
+	require.Equal(t, 10, rootCount)
+}
+
+func populateTestStore(t *testing.T, registry *store.Registry, user string, count int) {
+	createTestRootEntries(t, registry, user, count)
+}
+
+func createTestRootEntries(t *testing.T, registry *store.Registry, user string, count int) {
+	for i := 0; i < count; i++ {
+		name := fmt.Sprintf("root%d", i+1)
+		factory := newTestRootCertificateFactory(name)
+		createdName, err := registry.CreateCertificate(name, factory, user)
+		require.NoError(t, err)
+		require.Equal(t, name, createdName)
+		createTestIntermediateEntries(t, registry, createdName, user, count)
+	}
+}
+
+func createTestIntermediateEntries(t *testing.T, registry *store.Registry, issuerName string, user string, count int) {
+	issuerEntry, err := registry.Entry(issuerName)
 	require.NoError(t, err)
-	for {
-		next, err := entries.Next()
+	issuerCert := issuerEntry.Certificate()
+	issuerKey, err := issuerEntry.Key(user)
+	require.NoError(t, err)
+	for i := 0; i < count; i++ {
+		name := fmt.Sprintf("%s:intermediate%d", issuerName, i+1)
+		factory := newTestIntermediateCertificateFactory(name, issuerCert, issuerKey)
+		createdName, err := registry.CreateCertificate(name, factory, user)
 		require.NoError(t, err)
-		if next == nil {
-			break
-		}
-		if !next.IsRoot() {
-			createEntries(t, registry, "Leaf", next, user)
-		}
+		require.Equal(t, name, createdName)
+		createTestLeafEntries(t, registry, createdName, user, count)
 	}
 }
 
-func createEntries(t *testing.T, registry *store.Registry, name string, issuerEntry *store.RegistryEntry, user string) {
-	issuerEntryName := ""
-	if issuerEntry != nil {
-		issuerEntryName = issuerEntry.Name()
-	}
-	for i := 0; i < 10; i++ {
-		factory := newCertificateFactory(issuerEntry, user)
-		_, err := registry.CreateCertificate(fmt.Sprintf("%s[%s:%d]", name, issuerEntryName, i), factory, user)
+func createTestLeafEntries(t *testing.T, registry *store.Registry, issuerName string, user string, count int) {
+	issuerEntry, err := registry.Entry(issuerName)
+	require.NoError(t, err)
+	issuerCert := issuerEntry.Certificate()
+	issuerKey, err := issuerEntry.Key(user)
+	require.NoError(t, err)
+	for i := 0; i < count; i++ {
+		name := fmt.Sprintf("%s:leaf%d", issuerName, i+1)
+		factory := newTestLeafCertificateFactory(name, issuerCert, issuerKey)
+		createdName, err := registry.CreateCertificate(name, factory, user)
 		require.NoError(t, err)
+		require.Equal(t, name, createdName)
 	}
 }
 
-func newCertificateFactory(issuerEntry *store.RegistryEntry, user string) certs.CertificateFactory {
+func newTestRootCertificateFactory(cn string) certs.CertificateFactory {
 	now := time.Now()
 	template := &x509.Certificate{
-		SerialNumber: big.NewInt(1),
-		Subject: pkix.Name{
-			Organization: []string{now.Local().String()},
-		},
-		IsCA:      issuerEntry == nil,
-		KeyUsage:  x509.KeyUsageCRLSign,
-		NotBefore: now,
-		NotAfter:  now.Add(time.Hour),
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: cn},
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+		MaxPathLen:            2,
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+		NotBefore:             now,
+		NotAfter:              now.AddDate(0, 0, 1),
 	}
-	var issuer *x509.Certificate
-	var signer crypto.PrivateKey
-	if issuerEntry != nil {
-		issuer = issuerEntry.Certificate()
-		signer, _ = issuerEntry.Key(user)
-	}
-	return certs.NewLocalCertificateFactory(template, keys.ECDSA224.NewKeyPairFactory(), issuer, signer)
+	return certs.NewLocalCertificateFactory(template, testKeyAlg.NewKeyPairFactory(), nil, nil)
 }
 
-func newCertificateRequestFactory() certs.CertificateRequestFactory {
+func newTestIntermediateCertificateFactory(cn string, parent *x509.Certificate, signer crypto.PrivateKey) certs.CertificateFactory {
 	now := time.Now()
-	template := &x509.CertificateRequest{
-		Subject: pkix.Name{
-			Organization: []string{now.Local().String()},
-		},
+	template := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: cn},
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+		MaxPathLen:            1,
+		KeyUsage:              x509.KeyUsageCertSign,
+		NotBefore:             now,
+		NotAfter:              now.AddDate(0, 0, 1),
 	}
-	return certs.NewRemoteCertificateRequestFactory(template, keys.ECDSA224.NewKeyPairFactory())
+	return certs.NewLocalCertificateFactory(template, testKeyAlg.NewKeyPairFactory(), parent, signer)
 }
 
-func newRevocationListFactory(issuer *x509.Certificate, signer crypto.PrivateKey) certs.RevocationListFactory {
+func newTestLeafCertificateFactory(cn string, parent *x509.Certificate, signer crypto.PrivateKey) certs.CertificateFactory {
+	now := time.Now()
+	template := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: cn},
+		BasicConstraintsValid: true,
+		IsCA:                  false,
+		MaxPathLen:            -1,
+		NotBefore:             now,
+		NotAfter:              now.AddDate(0, 0, 1),
+	}
+	return certs.NewLocalCertificateFactory(template, testKeyAlg.NewKeyPairFactory(), parent, signer)
+}
+
+func newTestCertificateRequestFactory(cn string) certs.CertificateRequestFactory {
+	template := &x509.CertificateRequest{
+		Subject: pkix.Name{CommonName: cn},
+	}
+	return certs.NewRemoteCertificateRequestFactory(template, testKeyAlg.NewKeyPairFactory())
+}
+
+func newTestRevocationListFactory(issuer *x509.Certificate, signer crypto.PrivateKey) certs.RevocationListFactory {
 	now := time.Now()
 	template := &x509.RevocationList{
 		Number:     big.NewInt(1),
 		ThisUpdate: now,
-		NextUpdate: now.Add(24 * time.Hour),
+		NextUpdate: now.AddDate(0, 1, 0),
 	}
 	return certs.NewLocalRevocationListFactory(template, issuer, signer)
 }
