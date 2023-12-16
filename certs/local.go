@@ -61,7 +61,7 @@ func (factory *localCertificateFactory) New() (crypto.PrivateKey, *x509.Certific
 
 // NewLocalCertificateFactory creates a new certificate factory for locally issued certificates.
 func NewLocalCertificateFactory(template *x509.Certificate, keyPairFactory keys.KeyPairFactory, parent *x509.Certificate, signer crypto.PrivateKey) CertificateFactory {
-	logger := log.RootLogger().With().Str("CertificateFactory", localCertificateFactoryName).Logger()
+	logger := log.RootLogger().With().Str("Factory", localCertificateFactoryName).Logger()
 	return &localCertificateFactory{
 		template:       template,
 		keyPairFactory: keyPairFactory,
@@ -73,8 +73,6 @@ func NewLocalCertificateFactory(template *x509.Certificate, keyPairFactory keys.
 
 type localRevocationListFactory struct {
 	template *x509.RevocationList
-	issuer   *x509.Certificate
-	signer   crypto.PrivateKey
 	logger   *zerolog.Logger
 }
 
@@ -82,9 +80,9 @@ func (factory *localRevocationListFactory) Name() string {
 	return localCertificateFactoryName
 }
 
-func (factory *localRevocationListFactory) New() (*x509.RevocationList, error) {
+func (factory *localRevocationListFactory) New(issuer *x509.Certificate, signer crypto.PrivateKey) (*x509.RevocationList, error) {
 	factory.logger.Info().Msg("creating local X.509 revocation list...")
-	revocationListBytes, err := x509.CreateRevocationList(rand.Reader, factory.template, factory.issuer, keys.KeyFromPrivate(factory.signer))
+	revocationListBytes, err := x509.CreateRevocationList(rand.Reader, factory.template, issuer, keys.KeyFromPrivate(signer))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create revocation list (cause: %w)", err)
 	}
@@ -96,12 +94,10 @@ func (factory *localRevocationListFactory) New() (*x509.RevocationList, error) {
 }
 
 // NewLocalRevocationListFactory creates a new revocation list factory for locally issued certificates.
-func NewLocalRevocationListFactory(template *x509.RevocationList, issuer *x509.Certificate, signer crypto.PrivateKey) RevocationListFactory {
+func NewLocalRevocationListFactory(template *x509.RevocationList) RevocationListFactory {
 	logger := log.RootLogger().With().Str("Factory", localCertificateFactoryName).Logger()
 	return &localRevocationListFactory{
 		template: template,
-		issuer:   issuer,
-		signer:   signer,
 		logger:   &logger,
 	}
 }

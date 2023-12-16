@@ -165,6 +165,24 @@ func (backend *fsBackend) GetVersion(name string, version Version) ([]byte, erro
 	return data, nil
 }
 
+func (backend *fsBackend) Log(name string, message string) error {
+	entryPath, err := backend.checkEntryPath(name, true)
+	if err != nil {
+		return err
+	}
+	logPath := filepath.Join(entryPath, "log")
+	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, fsBackendFilePerm)
+	if err != nil {
+		return fmt.Errorf("failed to open log file '%s' (cause: %w)", logPath, err)
+	}
+	defer logFile.Close()
+	_, err = logFile.WriteString(message)
+	if err != nil {
+		return fmt.Errorf("failed to write log file '%s' (cause: %w)", logPath, err)
+	}
+	return nil
+}
+
 func (backend *fsBackend) checkEntryPath(name string, create bool) (string, error) {
 	entryPath := filepath.Join(backend.path, name)
 	pathInfo, err := os.Stat(entryPath)

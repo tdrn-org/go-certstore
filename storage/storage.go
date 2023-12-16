@@ -23,6 +23,7 @@ type Backend interface {
 	Get(name string) ([]byte, error)
 	GetVersions(name string) ([]Version, error)
 	GetVersion(name string, version Version) ([]byte, error)
+	Log(name string, message string) error
 }
 
 var ErrNotExist = errors.New("storage item does not exist")

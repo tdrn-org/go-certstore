@@ -179,6 +179,11 @@ func (backend *memoryBackend) GetVersion(name string, version Version) ([]byte, 
 	return nil, ErrNotExist
 }
 
+func (backend *memoryBackend) Log(name string, message string) error {
+	backend.logger.Info().Msgf("log: %s", message)
+	return nil
+}
+
 func NewMemoryStorage(versionLimit VersionLimit) Backend {
 	logger := log.RootLogger().With().Str("Backend", memoryBackendURI).Logger()
 	return &memoryBackend{

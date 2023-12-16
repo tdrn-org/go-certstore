@@ -45,8 +45,7 @@ func TestCreateCertificate(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, entry)
 	require.True(t, entry.HasKey())
-	entryKey, err := entry.Key(user)
-	require.NoError(t, err)
+	entryKey := entry.Key(user)
 	require.NotNil(t, entryKey)
 	require.True(t, entry.HasCertificate())
 	entryCertificate := entry.Certificate()
@@ -68,8 +67,7 @@ func TestCreateCertificateRequest(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, entry)
 	require.True(t, entry.HasKey())
-	entryKey, err := entry.Key(user)
-	require.NoError(t, err)
+	entryKey := entry.Key(user)
 	require.NotNil(t, entryKey)
 	require.True(t, entry.HasCertificateRequest())
 	entryCertificate := entry.CertificateRequest()
@@ -87,9 +85,7 @@ func TestResetRevocationList(t *testing.T) {
 	entry, err := registry.Entry(createdName)
 	require.NoError(t, err)
 	require.False(t, entry.HasRevocationList())
-	key, err := entry.Key(user)
-	require.NoError(t, err)
-	revocationListFactory := newTestRevocationListFactory(entry.Certificate(), key)
+	revocationListFactory := newTestRevocationListFactory()
 	revocationList1, err := entry.ResetRevocationList(revocationListFactory, user)
 	require.NoError(t, err)
 	require.NotNil(t, revocationList1)
@@ -149,10 +145,7 @@ func createTestRootEntries(t *testing.T, registry *store.Registry, user string, 
 		require.Equal(t, name, createdName)
 		entry, err := registry.Entry(createdName)
 		require.NoError(t, err)
-		entryCert := entry.Certificate()
-		entryKey, err := entry.Key(user)
-		require.NoError(t, err)
-		_, err = entry.ResetRevocationList(newTestRevocationListFactory(entryCert, entryKey), user)
+		_, err = entry.ResetRevocationList(newTestRevocationListFactory(), user)
 		require.NoError(t, err)
 		createTestIntermediateEntries(t, registry, createdName, user, count)
 	}
@@ -162,8 +155,7 @@ func createTestIntermediateEntries(t *testing.T, registry *store.Registry, issue
 	issuerEntry, err := registry.Entry(issuerName)
 	require.NoError(t, err)
 	issuerCert := issuerEntry.Certificate()
-	issuerKey, err := issuerEntry.Key(user)
-	require.NoError(t, err)
+	issuerKey := issuerEntry.Key(user)
 	for i := 0; i < count; i++ {
 		name := fmt.Sprintf("%s:intermediate%d", issuerName, i+1)
 		factory := newTestIntermediateCertificateFactory(name, issuerCert, issuerKey)
@@ -178,8 +170,7 @@ func createTestLeafEntries(t *testing.T, registry *store.Registry, issuerName st
 	issuerEntry, err := registry.Entry(issuerName)
 	require.NoError(t, err)
 	issuerCert := issuerEntry.Certificate()
-	issuerKey, err := issuerEntry.Key(user)
-	require.NoError(t, err)
+	issuerKey := issuerEntry.Key(user)
 	for i := 0; i < count; i++ {
 		name := fmt.Sprintf("%s:leaf%d", issuerName, i+1)
 		factory := newTestLeafCertificateFactory(name, issuerCert, issuerKey)
@@ -240,12 +231,12 @@ func newTestCertificateRequestFactory(cn string) certs.CertificateRequestFactory
 	return certs.NewRemoteCertificateRequestFactory(template, testKeyAlg.NewKeyPairFactory())
 }
 
-func newTestRevocationListFactory(issuer *x509.Certificate, signer crypto.PrivateKey) certs.RevocationListFactory {
+func newTestRevocationListFactory() certs.RevocationListFactory {
 	now := time.Now()
 	template := &x509.RevocationList{
 		Number:     big.NewInt(1),
 		ThisUpdate: now,
 		NextUpdate: now.AddDate(0, 1, 0),
 	}
-	return certs.NewLocalRevocationListFactory(template, issuer, signer)
+	return certs.NewLocalRevocationListFactory(template)
 }

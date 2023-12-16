@@ -40,7 +40,7 @@ type RevocationListFactory interface {
 	// Name returns the name of this factory.
 	Name() string
 	// New creates a new X.509 revocation list.
-	New() (*x509.RevocationList, error)
+	New(issuer *x509.Certificate, signer crypto.PrivateKey) (*x509.RevocationList, error)
 }
 
 // IsRoot checks whether the given certificate is a root certificate.

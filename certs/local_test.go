@@ -49,8 +49,8 @@ func TestLocalRevocationListFactory(t *testing.T) {
 	signer, issuer, err := issuerFactory.New()
 	require.NoError(t, err)
 	template := newTestRevocationListEmplate(1)
-	rlf := certs.NewLocalRevocationListFactory(template, issuer, signer)
-	revocationList, err := rlf.New()
+	rlf := certs.NewLocalRevocationListFactory(template)
+	revocationList, err := rlf.New(issuer, signer)
 	require.NoError(t, err)
 	require.NotNil(t, revocationList)
 }

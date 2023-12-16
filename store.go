@@ -16,18 +16,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hdecarne-github/go-certstore/certs"
 	"github.com/hdecarne-github/go-certstore/storage"
 	"github.com/hdecarne-github/go-log"
 	"github.com/rs/zerolog"
-)
-
-type Audit int
-
-const (
-	AuditCreate Audit = 1
-	AuditAccess Audit = 2
 )
 
 type Registry struct {
@@ -51,7 +45,11 @@ func (registry *Registry) CreateCertificate(name string, factory certs.Certifica
 		return "", err
 	}
 	data.setCertificate(certificate)
-	return registry.createEntryData(name, data)
+	createdName, err := registry.createEntryData(name, data)
+	if err == nil {
+		registry.audit(auditCreateCertificate, createdName, user)
+	}
+	return createdName, err
 }
 
 func (registry *Registry) CreateCertificateRequest(name string, factory certs.CertificateRequestFactory, user string) (string, error) {
@@ -65,7 +63,11 @@ func (registry *Registry) CreateCertificateRequest(name string, factory certs.Ce
 		return "", err
 	}
 	data.setCertificateRequest(certificateRequest)
-	return registry.createEntryData(name, data)
+	createdName, err := registry.createEntryData(name, data)
+	if err == nil {
+		registry.audit(auditCreateCertificateRequest, createdName, user)
+	}
+	return createdName, err
 }
 
 func (registry *Registry) Entries() (*RegistryEntries, error) {
@@ -164,6 +166,30 @@ func (registry *Registry) unmarshalEntryData(dataBytes []byte) (*registryEntryDa
 	return data, nil
 }
 
+const storeAuditName = ".audit"
+
+func (registry *Registry) audit(pattern auditPattern, name string, user string) {
+	message := pattern.sprintf(name, user)
+	registry.logger.Info().Msgf("audit: %s", message)
+	err := registry.backend.Log(storeAuditName, message)
+	if err != nil {
+		registry.logger.Error().Msgf("audit log failed for message '%s' (cause: %s)", message, err)
+	}
+}
+
+type auditPattern string
+
+const (
+	auditCreateCertificate        auditPattern = "%d;Create;Certificate;%s;%s"
+	auditCreateCertificateRequest auditPattern = "%d;Create;CertificateRequest;%s;%s"
+	auditCreateRevocationList     auditPattern = "%d;Create;RevocationList;%s;%s"
+	auditAccessKey                auditPattern = "%d;Access;Key;%s;%s"
+)
+
+func (pattern auditPattern) sprintf(name string, user string) string {
+	return fmt.Sprintf(string(pattern), time.Now().UnixMilli(), name, user)
+}
+
 type RegistryEntries struct {
 	registry *Registry
 	names    storage.Names
@@ -211,11 +237,11 @@ func (entry *RegistryEntry) HasKey() bool {
 	return entry.key != nil
 }
 
-func (entry *RegistryEntry) Key(user string) (crypto.PrivateKey, error) {
-	if entry.key == nil {
-		return entry.key, nil
+func (entry *RegistryEntry) Key(user string) crypto.PrivateKey {
+	if entry.key != nil {
+		entry.registry.audit(auditAccessKey, entry.name, user)
 	}
-	return entry.key, nil
+	return entry.key
 }
 
 func (entry *RegistryEntry) HasCertificate() bool {
@@ -235,10 +261,10 @@ func (entry *RegistryEntry) CertificateRequest() *x509.CertificateRequest {
 }
 
 func (entry *RegistryEntry) ResetRevocationList(factory certs.RevocationListFactory, user string) (*x509.RevocationList, error) {
-	if !(entry.IsRoot() && entry.CanIssue()) {
-		return nil, fmt.Errorf("cannot create revocation list for non-root/non-issueing certificate")
+	if !entry.CanIssue() {
+		return nil, fmt.Errorf("cannot create revocation list for a non-issueing certificate")
 	}
-	revocationList, err := factory.New()
+	revocationList, err := factory.New(entry.Certificate(), entry.Key(user))
 	if err != nil {
 		return nil, err
 	}
@@ -249,6 +275,7 @@ func (entry *RegistryEntry) ResetRevocationList(factory certs.RevocationListFact
 	data.setRevocationList(revocationList)
 	entry.registry.updateEntryData(entry.name, data)
 	entry.revocationList = revocationList
+	entry.registry.audit(auditCreateRevocationList, entry.name, user)
 	return revocationList, nil
 }
 
