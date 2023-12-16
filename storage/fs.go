@@ -33,7 +33,7 @@ func (backend *fsBackend) URI() string {
 }
 
 func (backend *fsBackend) Create(name string, data []byte) (string, error) {
-	backend.logger.Debug().Msgf("creating entry '%s'...", name)
+	backend.logger.Debug().Msgf("creating entry '%s*'...", name)
 	nextName := name
 	nextSuffix := 1
 	for {

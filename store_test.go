@@ -98,7 +98,7 @@ func TestResetRevocationList(t *testing.T) {
 }
 
 func TestEntries(t *testing.T) {
-	path, err := os.MkdirTemp("", "TestFSStorageNew*")
+	path, err := os.MkdirTemp("", "TestEntries*")
 	require.NoError(t, err)
 	defer os.RemoveAll(path)
 	backend, err := storage.NewFSStorage(testVersionLimit, path)
@@ -130,6 +130,28 @@ func TestEntries(t *testing.T) {
 	fmt.Printf("Store entries listed (took: %s)\n", elapsed)
 	require.Equal(t, 1110, totalCount)
 	require.Equal(t, 10, rootCount)
+}
+
+func TestMerge(t *testing.T) {
+	path, err := os.MkdirTemp("", "TestMerge*")
+	require.NoError(t, err)
+	defer os.RemoveAll(path)
+	backend, err := storage.NewFSStorage(testVersionLimit, path)
+	require.NoError(t, err)
+	registry, err := store.NewStore(backend)
+	require.NoError(t, err)
+	otherRegistry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit))
+	require.NoError(t, err)
+	user := "TestMergeUser"
+	start := time.Now()
+	populateTestStore(t, otherRegistry, user, 5)
+	elapsed := time.Since(start)
+	fmt.Printf("Store populated (took: %s)\n", elapsed)
+	start = time.Now()
+	err = registry.Merge(otherRegistry, user)
+	require.NoError(t, err)
+	elapsed = time.Since(start)
+	fmt.Printf("Store merged (took: %s)\n", elapsed)
 }
 
 func populateTestStore(t *testing.T, registry *store.Registry, user string, count int) {

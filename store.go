@@ -7,6 +7,7 @@
 package store
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	"github.com/hdecarne-github/go-certstore/certs"
+	"github.com/hdecarne-github/go-certstore/keys"
 	"github.com/hdecarne-github/go-certstore/storage"
 	"github.com/hdecarne-github/go-log"
 	"github.com/rs/zerolog"
@@ -52,6 +54,40 @@ func (registry *Registry) CreateCertificate(name string, factory certs.Certifica
 	return createdName, err
 }
 
+func (registry *Registry) MergeCertificate(name string, certificate *x509.Certificate, user string) (string, bool, error) {
+	entries, err := registry.Entries()
+	if err != nil {
+		return "", false, err
+	}
+	entry, err := entries.Find(func(entry *RegistryEntry) bool { return entry.matchCertificate(certificate) })
+	if err != nil {
+		return "", false, err
+	}
+	var mergedName string
+	var merged bool
+	if entry != nil {
+		mergedName = entry.Name()
+		merged = !entry.HasCertificate()
+		if merged {
+			err = entry.mergeCertificate(certificate)
+			if err != nil {
+				return "", false, err
+			}
+		}
+	} else {
+		data := &registryEntryData{}
+		data.setCertificate(certificate)
+		mergedName, err = registry.createEntryData(name, data)
+		if err != nil {
+			return "", false, err
+		}
+	}
+	if merged {
+		registry.audit(auditMergeCertificate, mergedName, user)
+	}
+	return mergedName, merged, nil
+}
+
 func (registry *Registry) CreateCertificateRequest(name string, factory certs.CertificateRequestFactory, user string) (string, error) {
 	key, certificateRequest, err := factory.New()
 	if err != nil {
@@ -68,6 +104,157 @@ func (registry *Registry) CreateCertificateRequest(name string, factory certs.Ce
 		registry.audit(auditCreateCertificateRequest, createdName, user)
 	}
 	return createdName, err
+}
+
+func (registry *Registry) MergeCertificateRequest(name string, certificateRequest *x509.CertificateRequest, user string) (string, bool, error) {
+	entries, err := registry.Entries()
+	if err != nil {
+		return "", false, err
+	}
+	entry, err := entries.Find(func(entry *RegistryEntry) bool { return entry.matchCertificateRequest(certificateRequest) })
+	if err != nil {
+		return "", false, err
+	}
+	var mergedName string
+	var merged bool
+	if entry != nil {
+		mergedName = entry.Name()
+		merged = !entry.HasCertificateRequest()
+		if merged {
+			err = entry.mergeCertificateRequest(certificateRequest)
+			if err != nil {
+				return "", false, err
+			}
+		}
+	} else {
+		data := &registryEntryData{}
+		data.setCertificateRequest(certificateRequest)
+		mergedName, err = registry.createEntryData(name, data)
+		if err != nil {
+			return "", false, err
+		}
+	}
+	if merged {
+		registry.audit(auditMergeCertificateRequest, mergedName, user)
+	}
+	return mergedName, merged, nil
+}
+
+func (registry *Registry) MergeKey(name string, key crypto.PrivateKey, user string) (string, bool, error) {
+	entries, err := registry.Entries()
+	if err != nil {
+		return "", false, err
+	}
+	entry, err := entries.Find(func(entry *RegistryEntry) bool { return entry.matchKey(key) })
+	if err != nil {
+		return "", false, err
+	}
+	var mergedName string
+	var merged bool
+	if entry != nil {
+		mergedName = entry.Name()
+		merged = !entry.HasCertificateRequest()
+		if merged {
+			err = entry.mergeKey(key)
+			if err != nil {
+				return "", false, err
+			}
+		}
+	} else {
+		data := &registryEntryData{}
+		data.setKey(key, registry.settings.Secret)
+		mergedName, err = registry.createEntryData(name, data)
+		if err != nil {
+			return "", false, err
+		}
+	}
+	if merged {
+		registry.audit(auditMergeKey, mergedName, user)
+	}
+	return mergedName, merged, nil
+}
+
+func (registry *Registry) MergeRevocationList(name string, revocationList *x509.RevocationList, user string) (string, bool, error) {
+	entries, err := registry.Entries()
+	if err != nil {
+		return "", false, err
+	}
+	entry, err := entries.Find(func(entry *RegistryEntry) bool { return entry.matchRevocationList(revocationList) })
+	if err != nil {
+		return "", false, err
+	}
+	var mergedName string
+	var merged bool
+	if entry != nil {
+		mergedName = entry.Name()
+		merged = !entry.HasRevocationList()
+		if merged {
+			err = entry.mergeRevocationList(revocationList)
+			if err != nil {
+				return "", false, err
+			}
+		}
+	} else {
+		data := &registryEntryData{}
+		data.setRevocationList(revocationList)
+		mergedName, err = registry.createEntryData(name, data)
+		if err != nil {
+			return "", false, err
+		}
+	}
+	if merged {
+		registry.audit(auditMergeRevocationList, mergedName, user)
+	}
+	return mergedName, merged, nil
+}
+
+func (registry *Registry) Merge(other *Registry, user string) error {
+	otherEntries, err := other.Entries()
+	if err != nil {
+		return err
+	}
+	for {
+		otherEntry, err := otherEntries.Next()
+		if err != nil {
+			return err
+		}
+		if otherEntry == nil {
+			break
+		}
+		err = registry.mergeEntry(otherEntry, user)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (registry *Registry) mergeEntry(entry *RegistryEntry, user string) error {
+	if entry.HasCertificate() {
+		_, _, err := registry.MergeCertificate("Imported certificate", entry.Certificate(), user)
+		if err != nil {
+			return err
+		}
+	}
+	if entry.HasCertificateRequest() {
+		_, _, err := registry.MergeCertificateRequest("Imported certificate request", entry.CertificateRequest(), user)
+		if err != nil {
+			return err
+		}
+	}
+	if entry.HasKey() {
+		_, _, err := registry.MergeKey("Imported key", entry.Key(user), user)
+		if err != nil {
+			return err
+		}
+	}
+	if entry.HasRevocationList() {
+		_, _, err := registry.MergeRevocationList("Imported revocation list", entry.RevocationList(), user)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (registry *Registry) Entries() (*RegistryEntries, error) {
@@ -173,7 +360,7 @@ func (registry *Registry) audit(pattern auditPattern, name string, user string) 
 	registry.logger.Info().Msgf("audit: %s", message)
 	err := registry.backend.Log(storeAuditName, message)
 	if err != nil {
-		registry.logger.Error().Msgf("audit log failed for message '%s' (cause: %s)", message, err)
+		registry.logger.Fatal().Err(err).Msgf("failed to write audit log '%s'", message)
 	}
 }
 
@@ -184,6 +371,10 @@ const (
 	auditCreateCertificateRequest auditPattern = "%d;Create;CertificateRequest;%s;%s"
 	auditCreateRevocationList     auditPattern = "%d;Create;RevocationList;%s;%s"
 	auditAccessKey                auditPattern = "%d;Access;Key;%s;%s"
+	auditMergeCertificate         auditPattern = "%d;Merge;Certificate;%s;%s"
+	auditMergeCertificateRequest  auditPattern = "%d;Merge;CertificateRequest;%s;%s"
+	auditMergeKey                 auditPattern = "%d;Merge;Key;%s;%s"
+	auditMergeRevocationList      auditPattern = "%d;Merge;RevocationList;%s;%s"
 )
 
 func (pattern auditPattern) sprintf(name string, user string) string {
@@ -207,6 +398,20 @@ func (entries *RegistryEntries) Next() (*RegistryEntry, error) {
 		}
 	}
 	return entries.registry.Entry(name)
+}
+
+func (entries *RegistryEntries) Find(match func(entry *RegistryEntry) bool) (*RegistryEntry, error) {
+	entry, err := entries.Next()
+	for {
+		if err != nil {
+			return nil, err
+		}
+		if entry == nil || match(entry) {
+			break
+		}
+		entry, err = entries.Next()
+	}
+	return entry, nil
 }
 
 type RegistryEntry struct {
@@ -268,13 +473,10 @@ func (entry *RegistryEntry) ResetRevocationList(factory certs.RevocationListFact
 	if err != nil {
 		return nil, err
 	}
-	data, err := entry.registry.getEntryData(entry.name)
+	err = entry.mergeRevocationList(revocationList)
 	if err != nil {
 		return nil, err
 	}
-	data.setRevocationList(revocationList)
-	entry.registry.updateEntryData(entry.name, data)
-	entry.revocationList = revocationList
 	entry.registry.audit(auditCreateRevocationList, entry.name, user)
 	return revocationList, nil
 }
@@ -285,6 +487,93 @@ func (entry *RegistryEntry) HasRevocationList() bool {
 
 func (entry *RegistryEntry) RevocationList() *x509.RevocationList {
 	return entry.revocationList
+}
+
+func (entry *RegistryEntry) matchCertificate(certificate *x509.Certificate) bool {
+	if entry.HasCertificate() {
+		return bytes.Equal(entry.certificate.Raw, certificate.Raw)
+	}
+	if entry.HasKey() {
+		return keys.PublicsEqual(keys.PublicFromPrivate(entry.key), certificate.PublicKey)
+	}
+	return false
+}
+
+func (entry *RegistryEntry) mergeCertificate(certificate *x509.Certificate) error {
+	data, err := entry.registry.getEntryData(entry.name)
+	if err != nil {
+		return err
+	}
+	data.setCertificate(certificate)
+	entry.registry.updateEntryData(entry.name, data)
+	entry.certificate = certificate
+	return nil
+}
+
+func (entry *RegistryEntry) matchCertificateRequest(certificateRequest *x509.CertificateRequest) bool {
+	if entry.HasCertificateRequest() {
+		return bytes.Equal(entry.certificateRequest.Raw, certificateRequest.Raw)
+	}
+	if entry.HasKey() {
+		return keys.PublicsEqual(keys.PublicFromPrivate(entry.key), certificateRequest.PublicKey)
+	}
+	return false
+}
+
+func (entry *RegistryEntry) mergeCertificateRequest(certificateRequest *x509.CertificateRequest) error {
+	data, err := entry.registry.getEntryData(entry.name)
+	if err != nil {
+		return err
+	}
+	data.setCertificateRequest(certificateRequest)
+	entry.registry.updateEntryData(entry.name, data)
+	entry.certificateRequest = certificateRequest
+	return nil
+}
+
+func (entry *RegistryEntry) matchKey(key crypto.PrivateKey) bool {
+	if entry.HasKey() {
+		return keys.PrivatesEqual(entry.key, key)
+	}
+	if entry.HasCertificate() {
+		return keys.PublicsEqual(entry.certificate.PublicKey, keys.PublicFromPrivate(key))
+	}
+	if entry.HasCertificateRequest() {
+		return keys.PublicsEqual(entry.certificateRequest.PublicKey, keys.PublicFromPrivate(key))
+	}
+	return false
+}
+
+func (entry *RegistryEntry) mergeKey(key crypto.PrivateKey) error {
+	data, err := entry.registry.getEntryData(entry.name)
+	if err != nil {
+		return err
+	}
+	data.setKey(key, entry.registry.settings.Secret)
+	entry.registry.updateEntryData(entry.name, data)
+	entry.key = key
+	return nil
+}
+
+func (entry *RegistryEntry) matchRevocationList(revocationList *x509.RevocationList) bool {
+	if entry.HasRevocationList() {
+		return bytes.Equal(entry.revocationList.Raw, revocationList.Raw)
+	}
+	if entry.HasCertificate() {
+		return revocationList.CheckSignatureFrom(entry.certificate) == nil
+	}
+	return false
+}
+
+func (entry *RegistryEntry) mergeRevocationList(revocationList *x509.RevocationList) error {
+	data, err := entry.registry.getEntryData(entry.name)
+	if err != nil {
+		return err
+	}
+	data.setRevocationList(revocationList)
+	entry.registry.updateEntryData(entry.name, data)
+	entry.revocationList = revocationList
+	return nil
 }
 
 type registryEntryData struct {

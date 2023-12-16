@@ -69,7 +69,7 @@ func (backend *memoryBackend) URI() string {
 func (backend *memoryBackend) Create(name string, data []byte) (string, error) {
 	backend.lock.Lock()
 	defer backend.lock.Unlock()
-	backend.logger.Debug().Msgf("creating entry '%s'...", name)
+	backend.logger.Debug().Msgf("creating entry '%s*'...", name)
 	nextName := name
 	nextSuffix := 1
 	for {
