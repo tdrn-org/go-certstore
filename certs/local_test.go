@@ -19,7 +19,7 @@ import (
 
 func TestLocalCertificateFactory(t *testing.T) {
 	// self-signed
-	template1 := newTestCertificateTemplate("Test1")
+	template1 := newLocalTestCertificateTemplate("Test1")
 	template1.IsCA = true
 	template1.KeyUsage = template1.KeyUsage | x509.KeyUsageCertSign
 	cf1 := certs.NewLocalCertificateFactory(template1, keys.ECDSA224.NewKeyPairFactory(), nil, nil)
@@ -32,7 +32,7 @@ func TestLocalCertificateFactory(t *testing.T) {
 	require.Equal(t, big.NewInt(1), cert1.SerialNumber)
 	require.Equal(t, template1.Subject.Organization, cert1.Subject.Organization)
 	// signed
-	template2 := newTestCertificateTemplate("Test2")
+	template2 := newLocalTestCertificateTemplate("Test2")
 	cf2 := certs.NewLocalCertificateFactory(template2, keys.ECDSA224.NewKeyPairFactory(), cert1, privateKey1)
 	require.NotNil(t, cf2)
 	privateKey2, cert2, err := cf2.New()
@@ -42,20 +42,20 @@ func TestLocalCertificateFactory(t *testing.T) {
 	require.Equal(t, template2.Subject.Organization, cert2.Subject.Organization)
 }
 func TestLocalRevocationListFactory(t *testing.T) {
-	issuerTemplate := newTestCertificateTemplate("Issuer")
+	issuerTemplate := newLocalTestCertificateTemplate("Issuer")
 	issuerTemplate.IsCA = true
 	issuerTemplate.KeyUsage = issuerTemplate.KeyUsage | x509.KeyUsageCRLSign
 	issuerFactory := certs.NewLocalCertificateFactory(issuerTemplate, keys.ECDSA224.NewKeyPairFactory(), nil, nil)
 	signer, issuer, err := issuerFactory.New()
 	require.NoError(t, err)
-	template := newTestRevocationListEmplate(1)
+	template := newLocalTestRevocationListEmplate(1)
 	rlf := certs.NewLocalRevocationListFactory(template)
 	revocationList, err := rlf.New(issuer, signer)
 	require.NoError(t, err)
 	require.NotNil(t, revocationList)
 }
 
-func newTestCertificateTemplate(cn string) *x509.Certificate {
+func newLocalTestCertificateTemplate(cn string) *x509.Certificate {
 	now := time.Now()
 	return &x509.Certificate{
 		Subject:   pkix.Name{CommonName: cn},
@@ -64,7 +64,7 @@ func newTestCertificateTemplate(cn string) *x509.Certificate {
 	}
 }
 
-func newTestRevocationListEmplate(number int64) *x509.RevocationList {
+func newLocalTestRevocationListEmplate(number int64) *x509.RevocationList {
 	now := time.Now()
 	return &x509.RevocationList{
 		Number:     big.NewInt(number),

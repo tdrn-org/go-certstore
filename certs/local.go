@@ -17,7 +17,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const localCertificateFactoryName = "Local"
+const localFactoryName = "Local"
 
 type localCertificateFactory struct {
 	template       *x509.Certificate
@@ -28,7 +28,7 @@ type localCertificateFactory struct {
 }
 
 func (factory *localCertificateFactory) Name() string {
-	return localCertificateFactoryName
+	return localFactoryName
 }
 
 func (factory *localCertificateFactory) New() (crypto.PrivateKey, *x509.Certificate, error) {
@@ -42,7 +42,7 @@ func (factory *localCertificateFactory) New() (crypto.PrivateKey, *x509.Certific
 		// parent signed
 		factory.logger.Info().Msg("creating signed local X.509 certificate...")
 		createTemplate.SerialNumber = nextSerialNumber()
-		certificateBytes, err = x509.CreateCertificate(rand.Reader, createTemplate, createTemplate, keyPair.Public(), factory.signer)
+		certificateBytes, err = x509.CreateCertificate(rand.Reader, createTemplate, factory.parent, keyPair.Public(), factory.signer)
 	} else {
 		// self-signed
 		factory.logger.Info().Msg("creating self-signed local X.509 certificate...")
@@ -61,7 +61,7 @@ func (factory *localCertificateFactory) New() (crypto.PrivateKey, *x509.Certific
 
 // NewLocalCertificateFactory creates a new certificate factory for locally issued certificates.
 func NewLocalCertificateFactory(template *x509.Certificate, keyPairFactory keys.KeyPairFactory, parent *x509.Certificate, signer crypto.PrivateKey) CertificateFactory {
-	logger := log.RootLogger().With().Str("Factory", localCertificateFactoryName).Logger()
+	logger := log.RootLogger().With().Str("Factory", localFactoryName).Logger()
 	return &localCertificateFactory{
 		template:       template,
 		keyPairFactory: keyPairFactory,
@@ -77,7 +77,7 @@ type localRevocationListFactory struct {
 }
 
 func (factory *localRevocationListFactory) Name() string {
-	return localCertificateFactoryName
+	return localFactoryName
 }
 
 func (factory *localRevocationListFactory) New(issuer *x509.Certificate, signer crypto.PrivateKey) (*x509.RevocationList, error) {
@@ -95,7 +95,7 @@ func (factory *localRevocationListFactory) New(issuer *x509.Certificate, signer 
 
 // NewLocalRevocationListFactory creates a new revocation list factory for locally issued certificates.
 func NewLocalRevocationListFactory(template *x509.RevocationList) RevocationListFactory {
-	logger := log.RootLogger().With().Str("Factory", localCertificateFactoryName).Logger()
+	logger := log.RootLogger().With().Str("Factory", localFactoryName).Logger()
 	return &localRevocationListFactory{
 		template: template,
 		logger:   &logger,

@@ -42,9 +42,11 @@ func (registry *Registry) CreateCertificate(name string, factory certs.Certifica
 		return "", err
 	}
 	data := &registryEntryData{}
-	err = data.setKey(key, registry.settings.Secret)
-	if err != nil {
-		return "", err
+	if key != nil {
+		err = data.setKey(key, registry.settings.Secret)
+		if err != nil {
+			return "", err
+		}
 	}
 	data.setCertificate(certificate)
 	createdName, err := registry.createEntryData(name, data)

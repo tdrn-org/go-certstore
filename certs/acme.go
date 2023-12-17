@@ -20,7 +20,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const acmeCertficateFactoryNamePattern = "ACME[%s]"
+const acmeFactoryNamePattern = "ACME[%s]"
 
 type acmeCertificateFactory struct {
 	name               string
@@ -67,7 +67,7 @@ func (factory *acmeCertificateFactory) New() (crypto.PrivateKey, *x509.Certifica
 
 // NewACMECertificateFactory creates a new certificate factory for ACME based certificates.
 func NewACMECertificateFactory(certificateRequest *acme.CertificateRequest, keyPairFactory keys.KeyPairFactory) CertificateFactory {
-	name := fmt.Sprintf(acmeCertficateFactoryNamePattern, certificateRequest.Provider.Name)
+	name := fmt.Sprintf(acmeFactoryNamePattern, certificateRequest.Provider.Name)
 	logger := log.RootLogger().With().Str("Factory", name).Logger()
 	return &acmeCertificateFactory{
 		name:               name,

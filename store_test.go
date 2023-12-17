@@ -97,41 +97,6 @@ func TestResetRevocationList(t *testing.T) {
 	require.Equal(t, revocationList1, revocationList2)
 }
 
-func TestEntries(t *testing.T) {
-	path, err := os.MkdirTemp("", "TestEntries*")
-	require.NoError(t, err)
-	defer os.RemoveAll(path)
-	backend, err := storage.NewFSStorage(testVersionLimit, path)
-	require.NoError(t, err)
-	registry, err := store.NewStore(backend)
-	require.NoError(t, err)
-	user := "TestEntriesUser"
-	start := time.Now()
-	populateTestStore(t, registry, user, 10)
-	elapsed := time.Since(start)
-	fmt.Printf("Store populated (took: %s)\n", elapsed)
-	entries, err := registry.Entries()
-	require.NoError(t, err)
-	totalCount := 0
-	rootCount := 0
-	start = time.Now()
-	for {
-		nextEntry, err := entries.Next()
-		require.NoError(t, err)
-		if nextEntry == nil {
-			break
-		}
-		totalCount++
-		if nextEntry.IsRoot() {
-			rootCount++
-		}
-	}
-	elapsed = time.Since(start)
-	fmt.Printf("Store entries listed (took: %s)\n", elapsed)
-	require.Equal(t, 1110, totalCount)
-	require.Equal(t, 10, rootCount)
-}
-
 func TestMerge(t *testing.T) {
 	path, err := os.MkdirTemp("", "TestMerge*")
 	require.NoError(t, err)
@@ -143,19 +108,63 @@ func TestMerge(t *testing.T) {
 	otherRegistry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit))
 	require.NoError(t, err)
 	user := "TestMergeUser"
-	start := time.Now()
 	populateTestStore(t, otherRegistry, user, 5)
+	start := time.Now()
+	err = registry.Merge(otherRegistry, user)
+	require.NoError(t, err)
 	elapsed := time.Since(start)
-	fmt.Printf("Store populated (took: %s)\n", elapsed)
+	fmt.Printf("%s merged once (took: %s)\n", registry.Name(), elapsed)
+	checkStoreEntries(t, registry, 160, 5)
 	start = time.Now()
 	err = registry.Merge(otherRegistry, user)
 	require.NoError(t, err)
 	elapsed = time.Since(start)
-	fmt.Printf("Store merged (took: %s)\n", elapsed)
+	fmt.Printf("%s merged twice (took: %s)\n", registry.Name(), elapsed)
+	checkStoreEntries(t, registry, 160, 5)
+}
+
+func TestEntries(t *testing.T) {
+	path, err := os.MkdirTemp("", "TestEntries*")
+	require.NoError(t, err)
+	defer os.RemoveAll(path)
+	backend, err := storage.NewFSStorage(testVersionLimit, path)
+	require.NoError(t, err)
+	registry, err := store.NewStore(backend)
+	require.NoError(t, err)
+	user := "TestEntriesUser"
+	populateTestStore(t, registry, user, 10)
+	checkStoreEntries(t, registry, 1120, 10)
+}
+
+func checkStoreEntries(t *testing.T, registry *store.Registry, total int, roots int) {
+	entries, err := registry.Entries()
+	require.NoError(t, err)
+	totalCount := 0
+	rootCount := 0
+	start := time.Now()
+	for {
+		nextEntry, err := entries.Next()
+		require.NoError(t, err)
+		if nextEntry == nil {
+			break
+		}
+		totalCount++
+		if nextEntry.IsRoot() {
+			rootCount++
+		}
+	}
+	elapsed := time.Since(start)
+	fmt.Printf("%s entries listed (took: %s)\n", registry.Name(), elapsed)
+	require.Equal(t, total, totalCount)
+	require.Equal(t, roots, rootCount)
 }
 
 func populateTestStore(t *testing.T, registry *store.Registry, user string, count int) {
+	start := time.Now()
 	createTestRootEntries(t, registry, user, count)
+	createTestRequestEntries(t, registry, user, count)
+	elapsed := time.Since(start)
+	fmt.Printf("%s populated (took: %s)\n", registry.Name(), elapsed)
 }
 
 func createTestRootEntries(t *testing.T, registry *store.Registry, user string, count int) {
@@ -199,6 +208,18 @@ func createTestLeafEntries(t *testing.T, registry *store.Registry, issuerName st
 		createdName, err := registry.CreateCertificate(name, factory, user)
 		require.NoError(t, err)
 		require.Equal(t, name, createdName)
+	}
+}
+
+func createTestRequestEntries(t *testing.T, registry *store.Registry, user string, count int) {
+	for i := 0; i < count; i++ {
+		name := fmt.Sprintf("request%d", i+1)
+		factory := newTestCertificateRequestFactory(name)
+		createdName, err := registry.CreateCertificateRequest(name, factory, user)
+		require.NoError(t, err)
+		require.Equal(t, name, createdName)
+		_, err = registry.Entry(createdName)
+		require.NoError(t, err)
 	}
 }
 
