@@ -23,10 +23,11 @@ import (
 )
 
 const testVersionLimit storage.VersionLimit = 2
+const testCacheTTL = time.Minute * 10
 const testKeyAlg = keys.ECDSA256
 
 func TestNewStore(t *testing.T) {
-	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit))
+	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
 	require.NoError(t, err)
 	require.NotNil(t, registry)
 	require.Equal(t, "Registry[memory://]", registry.Name())
@@ -35,7 +36,7 @@ func TestNewStore(t *testing.T) {
 func TestCreateCertificate(t *testing.T) {
 	name := "TestCreateCertificate"
 	user := name + "User"
-	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit))
+	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
 	require.NoError(t, err)
 	factory := newTestRootCertificateFactory(name)
 	createdName, err := registry.CreateCertificate(name, factory, user)
@@ -57,7 +58,7 @@ func TestCreateCertificate(t *testing.T) {
 func TestCreateCertificateRequest(t *testing.T) {
 	name := "TestCreateCertificateRequest"
 	user := name + "User"
-	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit))
+	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
 	require.NoError(t, err)
 	factory := newTestCertificateRequestFactory(name)
 	createdName, err := registry.CreateCertificateRequest(name, factory, user)
@@ -77,7 +78,7 @@ func TestCreateCertificateRequest(t *testing.T) {
 func TestResetRevocationList(t *testing.T) {
 	name := "TestResetRevocationList"
 	user := name + "User"
-	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit))
+	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
 	require.NoError(t, err)
 	certFactory := newTestRootCertificateFactory(name)
 	createdName, err := registry.CreateCertificate(name, certFactory, user)
@@ -101,11 +102,11 @@ func TestMerge(t *testing.T) {
 	path, err := os.MkdirTemp("", "TestMerge*")
 	require.NoError(t, err)
 	defer os.RemoveAll(path)
-	backend, err := storage.NewFSStorage(testVersionLimit, path)
+	backend, err := storage.NewFSStorage(path, testVersionLimit)
 	require.NoError(t, err)
-	registry, err := store.NewStore(backend)
+	registry, err := store.NewStore(backend, testCacheTTL)
 	require.NoError(t, err)
-	otherRegistry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit))
+	otherRegistry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
 	require.NoError(t, err)
 	user := "TestMergeUser"
 	populateTestStore(t, otherRegistry, user, 5)
@@ -127,9 +128,9 @@ func TestEntries(t *testing.T) {
 	path, err := os.MkdirTemp("", "TestEntries*")
 	require.NoError(t, err)
 	defer os.RemoveAll(path)
-	backend, err := storage.NewFSStorage(testVersionLimit, path)
+	backend, err := storage.NewFSStorage(path, testVersionLimit)
 	require.NoError(t, err)
-	registry, err := store.NewStore(backend)
+	registry, err := store.NewStore(backend, testCacheTTL)
 	require.NoError(t, err)
 	user := "TestEntriesUser"
 	populateTestStore(t, registry, user, 10)

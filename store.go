@@ -16,6 +16,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
@@ -23,13 +24,15 @@ import (
 	"github.com/hdecarne-github/go-certstore/keys"
 	"github.com/hdecarne-github/go-certstore/storage"
 	"github.com/hdecarne-github/go-log"
+	"github.com/jellydator/ttlcache/v3"
 	"github.com/rs/zerolog"
 )
 
 type Registry struct {
-	settings *storeSettings
-	backend  storage.Backend
-	logger   *zerolog.Logger
+	settings   *storeSettings
+	backend    storage.Backend
+	entryCache *ttlcache.Cache[string, *RegistryEntry]
+	logger     *zerolog.Logger
 }
 
 func (registry *Registry) Name() string {
@@ -85,6 +88,9 @@ func (registry *Registry) MergeCertificate(name string, certificate *x509.Certif
 		}
 	}
 	if merged {
+		if registry.entryCache != nil {
+			registry.entryCache.Delete(mergedName)
+		}
 		registry.audit(auditMergeCertificate, mergedName, user)
 	}
 	return mergedName, merged, nil
@@ -137,6 +143,9 @@ func (registry *Registry) MergeCertificateRequest(name string, certificateReques
 		}
 	}
 	if merged {
+		if registry.entryCache != nil {
+			registry.entryCache.Delete(mergedName)
+		}
 		registry.audit(auditMergeCertificateRequest, mergedName, user)
 	}
 	return mergedName, merged, nil
@@ -171,6 +180,9 @@ func (registry *Registry) MergeKey(name string, key crypto.PrivateKey, user stri
 		}
 	}
 	if merged {
+		if registry.entryCache != nil {
+			registry.entryCache.Delete(mergedName)
+		}
 		registry.audit(auditMergeKey, mergedName, user)
 	}
 	return mergedName, merged, nil
@@ -205,6 +217,9 @@ func (registry *Registry) MergeRevocationList(name string, revocationList *x509.
 		}
 	}
 	if merged {
+		if registry.entryCache != nil {
+			registry.entryCache.Delete(mergedName)
+		}
 		registry.audit(auditMergeRevocationList, mergedName, user)
 	}
 	return mergedName, merged, nil
@@ -268,6 +283,12 @@ func (registry *Registry) Entries() (*RegistryEntries, error) {
 }
 
 func (registry *Registry) Entry(name string) (*RegistryEntry, error) {
+	if registry.entryCache != nil {
+		cached := registry.entryCache.Get(name)
+		if cached != nil {
+			return cached.Value(), nil
+		}
+	}
 	data, err := registry.getEntryData(name)
 	if err != nil {
 		return nil, err
@@ -288,14 +309,18 @@ func (registry *Registry) Entry(name string) (*RegistryEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &RegistryEntry{
+	entry := &RegistryEntry{
 		registry:           registry,
 		name:               name,
 		key:                key,
 		certificate:        certificate,
 		certificateRequest: certificateRequest,
 		revocationList:     revocationList,
-	}, nil
+	}
+	if registry.entryCache != nil {
+		registry.entryCache.Set(name, entry, ttlcache.DefaultTTL)
+	}
+	return entry, nil
 }
 
 func (registry *Registry) isValidEntryName(name string) bool {
@@ -729,16 +754,23 @@ type storeSettings struct {
 	Secret string `json:"secret"`
 }
 
-func NewStore(backend storage.Backend) (*Registry, error) {
+func NewStore(backend storage.Backend, cacheTTL time.Duration) (*Registry, error) {
 	logger := log.RootLogger().With().Str("Registry", backend.URI()).Logger()
 	settings, err := newStoreSettings(backend, &logger)
 	if err != nil {
 		return nil, err
 	}
+	var entryCache *ttlcache.Cache[string, *RegistryEntry]
+	if cacheTTL > 0 {
+		entryCache = ttlcache.New[string, *RegistryEntry](ttlcache.WithTTL[string, *RegistryEntry](cacheTTL))
+		go entryCache.Start()
+		runtime.SetFinalizer(entryCache, func(cache *ttlcache.Cache[string, *RegistryEntry]) { cache.Stop() })
+	}
 	return &Registry{
-		settings: settings,
-		backend:  backend,
-		logger:   &logger,
+		settings:   settings,
+		backend:    backend,
+		entryCache: entryCache,
+		logger:     &logger,
 	}, nil
 }
 

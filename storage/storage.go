@@ -9,6 +9,16 @@ package storage
 import "errors"
 
 type VersionLimit uint64
+
+const MaxVersionLimit VersionLimit = 255
+
+func (limit VersionLimit) normalize() VersionLimit {
+	if limit <= 0 || MaxVersionLimit < limit {
+		return MaxVersionLimit
+	}
+	return limit
+}
+
 type Version uint64
 
 type Names interface {

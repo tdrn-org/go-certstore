@@ -187,7 +187,7 @@ func (backend *memoryBackend) Log(name string, message string) error {
 func NewMemoryStorage(versionLimit VersionLimit) Backend {
 	logger := log.RootLogger().With().Str("Backend", memoryBackendURI).Logger()
 	return &memoryBackend{
-		versionLimit: versionLimit,
+		versionLimit: versionLimit.normalize(),
 		entries:      make(map[string]entryVersions),
 		logger:       &logger,
 	}

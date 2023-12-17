@@ -225,7 +225,7 @@ func (backend *fsBackend) resolveEntryVersionFile(entryPath string, version Vers
 	return filepath.Join(entryPath, strconv.FormatUint(uint64(version), 10))
 }
 
-func NewFSStorage(versionLimit VersionLimit, path string) (Backend, error) {
+func NewFSStorage(path string, versionLimit VersionLimit) (Backend, error) {
 	uri := fmt.Sprintf(fsBackendURIPattern, path)
 	logger := log.RootLogger().With().Str("Backend", uri).Logger()
 	checkedPath, err := checkFSStoragePath(path, &logger)
@@ -233,7 +233,7 @@ func NewFSStorage(versionLimit VersionLimit, path string) (Backend, error) {
 		return nil, err
 	}
 	return &fsBackend{
-		versionLimit: versionLimit,
+		versionLimit: versionLimit.normalize(),
 		uri:          uri,
 		path:         checkedPath,
 		logger:       &logger,
