@@ -52,7 +52,7 @@ func TestCreateCertificate(t *testing.T) {
 	entryCertificate := entry.Certificate()
 	require.NotNil(t, entryCertificate)
 	require.True(t, entry.IsRoot())
-	require.True(t, entry.CanIssue())
+	require.True(t, entry.CanIssue(x509.KeyUsageCertSign))
 }
 
 func TestCreateCertificateRequest(t *testing.T) {
@@ -98,6 +98,22 @@ func TestResetRevocationList(t *testing.T) {
 	require.Equal(t, revocationList1, revocationList2)
 }
 
+func TestAttributes(t *testing.T) {
+	name := "TestAttributes"
+	user := name + "User"
+	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
+	require.NoError(t, err)
+	factory := newTestRootCertificateFactory(name)
+	createdName, err := registry.CreateCertificate(name, factory, user)
+	require.NoError(t, err)
+	entry, err := registry.Entry(createdName)
+	require.NoError(t, err)
+	attributes := map[string]string{"Key": "Value"}
+	err = entry.SetAttributes(attributes)
+	require.NoError(t, err)
+	require.Equal(t, attributes, entry.Attributes())
+}
+
 func TestMerge(t *testing.T) {
 	path, err := os.MkdirTemp("", "TestMerge*")
 	require.NoError(t, err)
@@ -135,6 +151,42 @@ func TestEntries(t *testing.T) {
 	user := "TestEntriesUser"
 	populateTestStore(t, registry, user, 10)
 	checkStoreEntries(t, registry, 1120, 10)
+}
+
+func TestCertPools(t *testing.T) {
+	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
+	require.NoError(t, err)
+	user := "TestCertPoolsUser"
+	populateTestStore(t, registry, user, 5)
+	roots, intermediates, err := registry.CertPools()
+	require.NoError(t, err)
+	require.NotNil(t, roots)
+	require.NotNil(t, intermediates)
+	entries, err := registry.Entries()
+	require.NoError(t, err)
+	for {
+		entry, err := entries.Next()
+		require.NoError(t, err)
+		if entry == nil {
+			break
+		}
+		if entry.HasCertificate() {
+			options := &x509.VerifyOptions{
+				Roots:         roots,
+				Intermediates: intermediates,
+			}
+			chains, err := entry.Certificate().Verify(*options)
+			require.NoError(t, err)
+			require.Equal(t, 1, len(chains))
+			if entry.IsRoot() {
+				require.Equal(t, 1, len(chains[0]))
+			} else if entry.IsCA() {
+				require.Equal(t, 2, len(chains[0]))
+			} else {
+				require.Equal(t, 3, len(chains[0]))
+			}
+		}
+	}
 }
 
 func checkStoreEntries(t *testing.T, registry *store.Registry, total int, roots int) {

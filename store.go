@@ -16,6 +16,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"runtime"
 	"strings"
 	"time"
@@ -323,6 +324,32 @@ func (registry *Registry) Entry(name string) (*RegistryEntry, error) {
 	return entry, nil
 }
 
+func (registry *Registry) CertPools() (*x509.CertPool, *x509.CertPool, error) {
+	roots := x509.NewCertPool()
+	intermediates := x509.NewCertPool()
+	entries, err := registry.Entries()
+	if err != nil {
+		return nil, nil, err
+	}
+	for {
+		entry, err := entries.Next()
+		if err != nil {
+			return nil, nil, err
+		}
+		if entry == nil {
+			break
+		}
+		if entry.IsCA() {
+			if entry.IsRoot() {
+				roots.AddCert(entry.Certificate())
+			} else {
+				intermediates.AddCert(entry.Certificate())
+			}
+		}
+	}
+	return roots, intermediates, nil
+}
+
 func (registry *Registry) isValidEntryName(name string) bool {
 	return !strings.HasPrefix(name, ".")
 }
@@ -372,7 +399,7 @@ func (registry *Registry) getEntryData(name string) (*registryEntryData, error) 
 }
 
 func (registry *Registry) unmarshalEntryData(dataBytes []byte) (*registryEntryData, error) {
-	data := &registryEntryData{}
+	data := &registryEntryData{Attributes: make(map[string]string, 0)}
 	err := json.Unmarshal(dataBytes, data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal entry data (cause: %w)", err)
@@ -448,6 +475,7 @@ type RegistryEntry struct {
 	certificate        *x509.Certificate
 	certificateRequest *x509.CertificateRequest
 	revocationList     *x509.RevocationList
+	attributes         map[string]string
 }
 
 func (entry *RegistryEntry) Name() string {
@@ -461,8 +489,15 @@ func (entry *RegistryEntry) IsRoot() bool {
 	return certs.IsRoot(entry.certificate)
 }
 
-func (entry *RegistryEntry) CanIssue() bool {
-	return entry.key != nil && entry.certificate != nil
+func (entry *RegistryEntry) IsCA() bool {
+	if entry.certificate == nil {
+		return false
+	}
+	return entry.certificate.IsCA
+}
+
+func (entry *RegistryEntry) CanIssue(keyUsage x509.KeyUsage) bool {
+	return entry.key != nil && entry.certificate != nil && (entry.certificate.KeyUsage&keyUsage) == keyUsage
 }
 
 func (entry *RegistryEntry) HasKey() bool {
@@ -493,8 +528,8 @@ func (entry *RegistryEntry) CertificateRequest() *x509.CertificateRequest {
 }
 
 func (entry *RegistryEntry) ResetRevocationList(factory certs.RevocationListFactory, user string) (*x509.RevocationList, error) {
-	if !entry.CanIssue() {
-		return nil, fmt.Errorf("cannot create revocation list for a non-issueing certificate")
+	if !entry.CanIssue(x509.KeyUsageCRLSign) {
+		return nil, fmt.Errorf("cannot create revocation list for selected certificate")
 	}
 	revocationList, err := factory.New(entry.Certificate(), entry.Key(user))
 	if err != nil {
@@ -514,6 +549,18 @@ func (entry *RegistryEntry) HasRevocationList() bool {
 
 func (entry *RegistryEntry) RevocationList() *x509.RevocationList {
 	return entry.revocationList
+}
+
+func (entry *RegistryEntry) Attributes() map[string]string {
+	return maps.Clone(entry.attributes)
+}
+
+func (entry *RegistryEntry) SetAttributes(attributes map[string]string) error {
+	err := entry.mergeAttributes(attributes)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (entry *RegistryEntry) matchCertificate(certificate *x509.Certificate) bool {
@@ -600,6 +647,17 @@ func (entry *RegistryEntry) mergeRevocationList(revocationList *x509.RevocationL
 	data.setRevocationList(revocationList)
 	entry.registry.updateEntryData(entry.name, data)
 	entry.revocationList = revocationList
+	return nil
+}
+
+func (entry *RegistryEntry) mergeAttributes(attributes map[string]string) error {
+	data, err := entry.registry.getEntryData(entry.name)
+	if err != nil {
+		return err
+	}
+	data.Attributes = maps.Clone(attributes)
+	entry.registry.updateEntryData(entry.name, data)
+	entry.attributes = data.Attributes
 	return nil
 }
 
