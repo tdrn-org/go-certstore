@@ -3,7 +3,7 @@
 // This software may be modified and distributed under the terms
 // of the MIT license.  See the LICENSE file for details.
 
-package store_test
+package certstore_test
 
 import (
 	"crypto"
@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	store "github.com/hdecarne-github/go-certstore"
+	"github.com/hdecarne-github/go-certstore"
 	"github.com/hdecarne-github/go-certstore/certs"
 	"github.com/hdecarne-github/go-certstore/keys"
 	"github.com/hdecarne-github/go-certstore/storage"
@@ -27,7 +27,7 @@ const testCacheTTL = time.Minute * 10
 const testKeyAlg = keys.ECDSA256
 
 func TestNewStore(t *testing.T) {
-	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
+	registry, err := certstore.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
 	require.NoError(t, err)
 	require.NotNil(t, registry)
 	require.Equal(t, "Registry[memory://]", registry.Name())
@@ -36,7 +36,7 @@ func TestNewStore(t *testing.T) {
 func TestCreateCertificate(t *testing.T) {
 	name := "TestCreateCertificate"
 	user := name + "User"
-	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
+	registry, err := certstore.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
 	require.NoError(t, err)
 	factory := newTestRootCertificateFactory(name)
 	createdName, err := registry.CreateCertificate(name, factory, user)
@@ -58,7 +58,7 @@ func TestCreateCertificate(t *testing.T) {
 func TestCreateCertificateRequest(t *testing.T) {
 	name := "TestCreateCertificateRequest"
 	user := name + "User"
-	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
+	registry, err := certstore.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
 	require.NoError(t, err)
 	factory := newTestCertificateRequestFactory(name)
 	createdName, err := registry.CreateCertificateRequest(name, factory, user)
@@ -78,7 +78,7 @@ func TestCreateCertificateRequest(t *testing.T) {
 func TestResetRevocationList(t *testing.T) {
 	name := "TestResetRevocationList"
 	user := name + "User"
-	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
+	registry, err := certstore.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
 	require.NoError(t, err)
 	certFactory := newTestRootCertificateFactory(name)
 	createdName, err := registry.CreateCertificate(name, certFactory, user)
@@ -101,7 +101,7 @@ func TestResetRevocationList(t *testing.T) {
 func TestAttributes(t *testing.T) {
 	name := "TestAttributes"
 	user := name + "User"
-	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
+	registry, err := certstore.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
 	require.NoError(t, err)
 	factory := newTestRootCertificateFactory(name)
 	createdName, err := registry.CreateCertificate(name, factory, user)
@@ -120,9 +120,9 @@ func TestMerge(t *testing.T) {
 	defer os.RemoveAll(path)
 	backend, err := storage.NewFSStorage(path, testVersionLimit)
 	require.NoError(t, err)
-	registry, err := store.NewStore(backend, testCacheTTL)
+	registry, err := certstore.NewStore(backend, testCacheTTL)
 	require.NoError(t, err)
-	otherRegistry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
+	otherRegistry, err := certstore.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
 	require.NoError(t, err)
 	user := "TestMergeUser"
 	populateTestStore(t, otherRegistry, user, 5)
@@ -146,7 +146,7 @@ func TestEntries(t *testing.T) {
 	defer os.RemoveAll(path)
 	backend, err := storage.NewFSStorage(path, testVersionLimit)
 	require.NoError(t, err)
-	registry, err := store.NewStore(backend, testCacheTTL)
+	registry, err := certstore.NewStore(backend, testCacheTTL)
 	require.NoError(t, err)
 	user := "TestEntriesUser"
 	populateTestStore(t, registry, user, 10)
@@ -154,7 +154,7 @@ func TestEntries(t *testing.T) {
 }
 
 func TestCertPools(t *testing.T) {
-	registry, err := store.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
+	registry, err := certstore.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
 	require.NoError(t, err)
 	user := "TestCertPoolsUser"
 	populateTestStore(t, registry, user, 5)
@@ -189,7 +189,7 @@ func TestCertPools(t *testing.T) {
 	}
 }
 
-func checkStoreEntries(t *testing.T, registry *store.Registry, total int, roots int) {
+func checkStoreEntries(t *testing.T, registry *certstore.Registry, total int, roots int) {
 	entries, err := registry.Entries()
 	require.NoError(t, err)
 	totalCount := 0
@@ -212,7 +212,7 @@ func checkStoreEntries(t *testing.T, registry *store.Registry, total int, roots 
 	require.Equal(t, roots, rootCount)
 }
 
-func populateTestStore(t *testing.T, registry *store.Registry, user string, count int) {
+func populateTestStore(t *testing.T, registry *certstore.Registry, user string, count int) {
 	start := time.Now()
 	createTestRootEntries(t, registry, user, count)
 	createTestRequestEntries(t, registry, user, count)
@@ -220,7 +220,7 @@ func populateTestStore(t *testing.T, registry *store.Registry, user string, coun
 	fmt.Printf("%s populated (took: %s)\n", registry.Name(), elapsed)
 }
 
-func createTestRootEntries(t *testing.T, registry *store.Registry, user string, count int) {
+func createTestRootEntries(t *testing.T, registry *certstore.Registry, user string, count int) {
 	for i := 0; i < count; i++ {
 		name := fmt.Sprintf("root%d", i+1)
 		factory := newTestRootCertificateFactory(name)
@@ -235,7 +235,7 @@ func createTestRootEntries(t *testing.T, registry *store.Registry, user string, 
 	}
 }
 
-func createTestIntermediateEntries(t *testing.T, registry *store.Registry, issuerName string, user string, count int) {
+func createTestIntermediateEntries(t *testing.T, registry *certstore.Registry, issuerName string, user string, count int) {
 	issuerEntry, err := registry.Entry(issuerName)
 	require.NoError(t, err)
 	issuerCert := issuerEntry.Certificate()
@@ -250,7 +250,7 @@ func createTestIntermediateEntries(t *testing.T, registry *store.Registry, issue
 	}
 }
 
-func createTestLeafEntries(t *testing.T, registry *store.Registry, issuerName string, user string, count int) {
+func createTestLeafEntries(t *testing.T, registry *certstore.Registry, issuerName string, user string, count int) {
 	issuerEntry, err := registry.Entry(issuerName)
 	require.NoError(t, err)
 	issuerCert := issuerEntry.Certificate()
@@ -264,7 +264,7 @@ func createTestLeafEntries(t *testing.T, registry *store.Registry, issuerName st
 	}
 }
 
-func createTestRequestEntries(t *testing.T, registry *store.Registry, user string, count int) {
+func createTestRequestEntries(t *testing.T, registry *certstore.Registry, user string, count int) {
 	for i := 0; i < count; i++ {
 		name := fmt.Sprintf("request%d", i+1)
 		factory := newTestCertificateRequestFactory(name)

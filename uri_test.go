@@ -3,14 +3,14 @@
 // This software may be modified and distributed under the terms
 // of the MIT license.  See the LICENSE file for details.
 
-package store_test
+package certstore_test
 
 import (
 	"fmt"
 	"os"
 	"testing"
 
-	store "github.com/hdecarne-github/go-certstore"
+	"github.com/hdecarne-github/go-certstore"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,16 +30,16 @@ func TestFSStoreURI(t *testing.T) {
 }
 
 func TestInvalidStoreURI(t *testing.T) {
-	_, err := store.NewStoreFromURI("foo://", "")
+	_, err := certstore.NewStoreFromURI("foo://", "")
 	require.Error(t, err)
-	_, err = store.NewStoreFromURI("memory://?foo", "")
+	_, err = certstore.NewStoreFromURI("memory://?foo", "")
 	require.Error(t, err)
-	_, err = store.NewStoreFromURI("memory://?cache_ttl=0&cache_ttl=1", "")
+	_, err = certstore.NewStoreFromURI("memory://?cache_ttl=0&cache_ttl=1", "")
 	require.Error(t, err)
 }
 
 func checkURI(t *testing.T, uri string, basePath string, name string) {
-	registry, err := store.NewStoreFromURI(uri, basePath)
+	registry, err := certstore.NewStoreFromURI(uri, basePath)
 	require.NoError(t, err)
 	require.NotNil(t, registry)
 	require.Equal(t, name, registry.Name())
