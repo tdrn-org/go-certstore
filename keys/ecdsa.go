@@ -57,7 +57,7 @@ func (factory *ecdsaKeyPairFactory) New() (KeyPair, error) {
 }
 
 func newECDSAKeyPairFactory(alg Algorithm, curve elliptic.Curve) KeyPairFactory {
-	logger := log.RootLogger().With().Str("Algorithm", alg.Name()).Logger()
+	logger := log.RootLogger().With().Str("Algorithm", alg.String()).Logger()
 	return &ecdsaKeyPairFactory{alg: alg, curve: curve, logger: &logger}
 }
 

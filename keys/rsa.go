@@ -56,7 +56,7 @@ func (factory *rsaKeyPairFactory) New() (KeyPair, error) {
 }
 
 func newRSAKeyPairFactory(alg Algorithm, bits int) KeyPairFactory {
-	logger := log.RootLogger().With().Str("Algorithm", alg.Name()).Logger()
+	logger := log.RootLogger().With().Str("Algorithm", alg.String()).Logger()
 	return &rsaKeyPairFactory{alg: alg, bits: bits, logger: &logger}
 }
 

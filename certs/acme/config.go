@@ -171,7 +171,7 @@ func (providerConfig *ProviderConfig) keyTypeFromKeyPairFactory(keyPairFactory k
 	case keys.ECDSA384:
 		return certcrypto.EC384, nil
 	}
-	return "", fmt.Errorf("unrecognized key algorithm '%s'", alg.Name())
+	return "", fmt.Errorf("unrecognized key algorithm '%s'", alg)
 }
 
 // A DomainConfig defines a domain pattern as well as the challenge types for the matching domains.

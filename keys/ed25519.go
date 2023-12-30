@@ -55,7 +55,7 @@ func (factory *ed25519KeyPairFactory) New() (KeyPair, error) {
 }
 
 func newED25519KeyPairFactory() KeyPairFactory {
-	logger := log.RootLogger().With().Str("Algorithm", ED25519.Name()).Logger()
+	logger := log.RootLogger().With().Str("Algorithm", ED25519.String()).Logger()
 	return &ed25519KeyPairFactory{logger: &logger}
 }
 

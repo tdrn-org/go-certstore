@@ -15,6 +15,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rsa"
 	"fmt"
+	"math"
 	"reflect"
 )
 
@@ -104,17 +105,44 @@ func Algs() []Algorithm {
 	}
 }
 
+const unknownAlgorithmNamePattern = "uknown algorithm name (%s)"
+
+// AlgorithmFromString determines an algorithm from its name.
+func AlgorithmFromString(name string) (Algorithm, error) {
+	switch name {
+	case "RSA2048":
+		return RSA2048, nil
+	case "RSA3072":
+		return RSA3072, nil
+	case "RSA4096":
+		return RSA4096, nil
+	case "RSA8192":
+		return RSA8192, nil
+	case "ECDSA224":
+		return ECDSA224, nil
+	case "ECDSA256":
+		return ECDSA256, nil
+	case "ECDSA384":
+		return ECDSA384, nil
+	case "ECDSA521":
+		return ECDSA521, nil
+	case "ED25519":
+		return ED25519, nil
+	}
+	return Algorithm(math.MaxUint), fmt.Errorf(unknownAlgorithmNamePattern, name)
+}
+
 const unknownAlgorithmPattern = "uknown algorithm (%d)"
 
-// Name gets the algorithm's name.
-func (algorithm Algorithm) Name() string {
+// String gets the algorithm's name.
+func (algorithm Algorithm) String() string {
 	switch algorithm {
 	case RSA2048:
 		return "RSA2048"
 	case RSA3072:
 		return "RSA3072"
 	case RSA4096:
-		return "RSA4095"
+		return "RSA4096"
 	case RSA8192:
 		return "RSA8192"
 	case ECDSA224:
