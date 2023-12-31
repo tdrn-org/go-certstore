@@ -105,7 +105,7 @@ func Algs() []Algorithm {
 	}
 }
 
-const unknownAlgorithmNamePattern = "uknown algorithm name (%s)"
+const unknownAlgorithmNamePattern = "unknown algorithm name: '%s'"
 
 // AlgorithmFromString determines an algorithm from its name.
 func AlgorithmFromString(name string) (Algorithm, error) {
@@ -132,7 +132,7 @@ func AlgorithmFromString(name string) (Algorithm, error) {
 	return Algorithm(math.MaxUint), fmt.Errorf(unknownAlgorithmNamePattern, name)
 }
 
-const unknownAlgorithmPattern = "uknown algorithm (%d)"
+const unknownAlgorithmPattern = "unknown algorithm: %d"
 
 // String gets the algorithm's name.
 func (algorithm Algorithm) String() string {
