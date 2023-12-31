@@ -121,9 +121,9 @@ func checkKey(t *testing.T, key keys.Key, publicKey crypto.PublicKey, hash crypt
 
 func TestAlgs(t *testing.T) {
 	for _, alg := range keys.Algs() {
-		alg2, err := keys.AlgorithmFromString(alg.String())
+		algFromName, err := keys.AlgorithmFromString(alg.String())
 		require.NoError(t, err)
-		require.Equal(t, alg, alg2)
+		require.Equal(t, alg, algFromName)
 		fmt.Printf("Generating %s", alg)
 		start := time.Now()
 		kpf := alg.NewKeyPairFactory()
@@ -137,5 +137,8 @@ func TestAlgs(t *testing.T) {
 		require.Equal(t, alg, keypair.Alg())
 		require.NotNil(t, keypair.Private())
 		require.NotNil(t, keypair.Public())
+		algFromKey, err := keys.AlgorithmFromKey(keypair.Public())
+		require.NoError(t, err)
+		require.Equal(t, alg, algFromKey)
 	}
 }

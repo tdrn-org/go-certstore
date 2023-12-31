@@ -15,7 +15,6 @@ import (
 	"crypto/elliptic"
 	"crypto/rsa"
 	"fmt"
-	"math"
 	"reflect"
 )
 
@@ -45,6 +44,10 @@ type Key interface {
 
 // KeyFromPrivate wraps the given private key into a Key interface.
 func KeyFromPrivate(privateKey crypto.PrivateKey) Key {
+	rsaKey, ok := privateKey.(*rsa.PrivateKey)
+	if ok {
+		return wrapRSAKey(rsaKey)
+	}
 	ecdsaKey, ok := privateKey.(*ecdsa.PrivateKey)
 	if ok {
 		return wrapECDSAKey(ecdsaKey)
@@ -52,10 +55,6 @@ func KeyFromPrivate(privateKey crypto.PrivateKey) Key {
 	ed25519Key, ok := privateKey.(ed25519.PrivateKey)
 	if ok {
 		return wrapED25519Key(ed25519Key)
-	}
-	rsaKey, ok := privateKey.(*rsa.PrivateKey)
-	if ok {
-		return wrapRSAKey(rsaKey)
 	}
 	panic("unexpected private key type")
 }
@@ -79,15 +78,16 @@ func PublicFromPrivate(privateKey crypto.PrivateKey) crypto.PublicKey {
 type Algorithm uint
 
 const (
-	RSA2048  Algorithm = 1 // RSA cipher 2048 bit key lenght
-	RSA3072  Algorithm = 2 // RSA cipher 3072 bit key lenght
-	RSA4096  Algorithm = 3 // RSA cipher 4096 bit key lenght
-	RSA8192  Algorithm = 4 // RSA cipher 8192 bit key lenght
-	ECDSA224 Algorithm = 5 // ECDSA cipher P-224 curve
-	ECDSA256 Algorithm = 6 // ECDSA cipher P-256 curve
-	ECDSA384 Algorithm = 7 // ECDSA cipher P-384 curve
-	ECDSA521 Algorithm = 8 // ECDSA cipher P-521 curve
-	ED25519  Algorithm = 9 // ED25519 cipher
+	UnknownAlgorithm Algorithm = 0
+	RSA2048          Algorithm = 1 // RSA cipher 2048 bit key lenght
+	RSA3072          Algorithm = 2 // RSA cipher 3072 bit key lenght
+	RSA4096          Algorithm = 3 // RSA cipher 4096 bit key lenght
+	RSA8192          Algorithm = 4 // RSA cipher 8192 bit key lenght
+	ECDSA224         Algorithm = 5 // ECDSA cipher P-224 curve
+	ECDSA256         Algorithm = 6 // ECDSA cipher P-256 curve
+	ECDSA384         Algorithm = 7 // ECDSA cipher P-384 curve
+	ECDSA521         Algorithm = 8 // ECDSA cipher P-521 curve
+	ED25519          Algorithm = 9 // ED25519 cipher
 )
 
 // Algs returns the known algorithms.
@@ -129,7 +129,58 @@ func AlgorithmFromString(name string) (Algorithm, error) {
 	case "ED25519":
 		return ED25519, nil
 	}
-	return Algorithm(math.MaxUint), fmt.Errorf(unknownAlgorithmNamePattern, name)
+	return UnknownAlgorithm, fmt.Errorf(unknownAlgorithmNamePattern, name)
+}
+
+// AlgorithmFromKey determines the algorithm of the given public key.
+func AlgorithmFromKey(publicKey crypto.PublicKey) (Algorithm, error) {
+	rsaKey, ok := publicKey.(*rsa.PublicKey)
+	if ok {
+		return algorithmFromRSAKey(rsaKey)
+	}
+	ecdsaKey, ok := publicKey.(*ecdsa.PublicKey)
+	if ok {
+		return algorithmFromECDSAKey(ecdsaKey)
+	}
+	ed25519Key, ok := publicKey.(ed25519.PublicKey)
+	if ok {
+		return algorithmFromED25519Key(ed25519Key)
+	}
+	return UnknownAlgorithm, fmt.Errorf("unrecognized key type")
+}
+
+func algorithmFromRSAKey(publicKey *rsa.PublicKey) (Algorithm, error) {
+	keySize := publicKey.Size()
+	switch keySize {
+	case 256:
+		return RSA2048, nil
+	case 384:
+		return RSA3072, nil
+	case 512:
+		return RSA4096, nil
+	case 1024:
+		return RSA8192, nil
+	}
+	return UnknownAlgorithm, fmt.Errorf("unexpected RSA key size: %d", keySize)
+}
+
+func algorithmFromECDSAKey(publicKey *ecdsa.PublicKey) (Algorithm, error) {
+	curveName := publicKey.Curve.Params().Name
+	switch curveName {
+	case "P-224":
+		return ECDSA224, nil
+	case "P-256":
+		return ECDSA256, nil
+	case "P-384":
+		return ECDSA384, nil
+	case "P-521":
+		return ECDSA521, nil
+	}
+	return UnknownAlgorithm, fmt.Errorf("unexpected ECDSA key curve: '%s'", curveName)
+}
+
+func algorithmFromED25519Key(publicKey ed25519.PublicKey) (Algorithm, error) {
+	return ED25519, nil
 }
 
 const unknownAlgorithmPattern = "unknown algorithm: %d"
