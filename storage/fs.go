@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strconv"
 
 	"github.com/hdecarne-github/go-log"
@@ -217,7 +217,7 @@ func (backend *fsBackend) readEntryVersions(entryPath string, ignoreEmpty bool) 
 		}
 		versions = append(versions, Version(parsedVersion))
 	}
-	sort.Slice(versions, func(i int, j int) bool { return versions[i] > versions[j] })
+	slices.SortFunc(versions, func(a Version, b Version) int { return int(b - a) })
 	return versions, nil
 }
 

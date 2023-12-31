@@ -8,6 +8,7 @@ package storage
 import (
 	"container/heap"
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/hdecarne-github/go-log"
@@ -122,6 +123,7 @@ func (backend *memoryBackend) List() (Names, error) {
 	for name := range backend.entries {
 		names = append(names, name)
 	}
+	slices.Sort(names)
 	return &memoryBackendNames{names: names}, nil
 }
 
