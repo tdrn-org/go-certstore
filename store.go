@@ -497,7 +497,7 @@ func (entry *RegistryEntry) IsCA() bool {
 }
 
 func (entry *RegistryEntry) CanIssue(keyUsage x509.KeyUsage) bool {
-	return entry.key != nil && entry.certificate != nil && (entry.certificate.KeyUsage&keyUsage) == keyUsage
+	return entry.key != nil && entry.certificate != nil && entry.certificate.BasicConstraintsValid && entry.certificate.IsCA && (entry.certificate.KeyUsage&keyUsage) == keyUsage
 }
 
 func (entry *RegistryEntry) HasKey() bool {
