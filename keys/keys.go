@@ -206,6 +206,8 @@ func (algorithm Algorithm) String() string {
 		return "ECDSA521"
 	case ED25519:
 		return "ED25519"
+	case UnknownAlgorithm:
+		return "unknown"
 	}
 	panic(fmt.Sprintf(unknownAlgorithmPattern, algorithm))
 }
