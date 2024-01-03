@@ -16,6 +16,7 @@ import (
 
 func TestKeyUsageString(t *testing.T) {
 	require.Equal(t, "-", certs.KeyUsageString(0))
+	require.Equal(t, "keyCertSign", certs.KeyUsageString(x509.KeyUsageCertSign))
 	require.Equal(t, "digitalSignature, contentCommitment, keyEncipherment, dataEncipherment, keyAgreement, keyCertSign, cRLSign, encipherOnly, decipherOnly, 0xfe00", certs.KeyUsageString(0xffff))
 }
 
@@ -24,9 +25,9 @@ func TestExtKeyUsageString(t *testing.T) {
 	require.Equal(t, "any, 1.2.3.4", certs.ExtKeyUsageString([]x509.ExtKeyUsage{x509.ExtKeyUsageAny}, []asn1.ObjectIdentifier{asn1.ObjectIdentifier([]int{1, 2, 3, 4})}))
 }
 
-const basicConstraintsNoCA = "CA = false"
-const basicConstratinsCAWithoutPathLenConstraint = "CA = true"
-const basicConstratinsCAWithPathLenConstraint = "CA = true, pathLenConstraint = 2"
+const basicConstraintsNoCA = "CA: no"
+const basicConstratinsCAWithoutPathLenConstraint = "CA: yes"
+const basicConstratinsCAWithPathLenConstraint = "CA: yes, pathLenConstraint: 2"
 
 func TestBasicConstraintsString(t *testing.T) {
 	require.Equal(t, basicConstraintsNoCA, certs.BasicConstraintsString(false, 0, false))

@@ -49,8 +49,8 @@ func KeyUsageString(keyUsage x509.KeyUsage) string {
 	var keyUsageFlags x509.KeyUsage
 	var builder strings.Builder
 	for _, keyUsageFlag := range keyUsages {
-		keyUsageFlags |= keyUsageFlag
 		if (keyUsage & keyUsageFlag) == keyUsageFlag {
+			keyUsageFlags |= keyUsageFlag
 			if builder.Len() > 0 {
 				builder.WriteString(", ")
 			}
@@ -133,12 +133,12 @@ const BasicConstraintsExtensionOID = "2.5.29.19"
 
 func BasicConstraintsString(isCA bool, maxPathLen int, maxPathLenZero bool) string {
 	if !isCA {
-		return "CA = false"
+		return "CA: no"
 	}
 	if maxPathLen < 0 || (maxPathLen == 0 && !maxPathLenZero) {
-		return "CA = true"
+		return "CA: yes"
 	}
-	return fmt.Sprintf("CA = true, pathLenConstraint = %d", maxPathLen)
+	return fmt.Sprintf("CA: yes, pathLenConstraint: %d", maxPathLen)
 }
 
 const SubjectKeyIdentifierExtensionName = "SubjectKeyIdentifier"
