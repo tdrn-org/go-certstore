@@ -19,8 +19,8 @@ const testVersionLimit storage.VersionLimit = 2
 func TestMemoryStorageNew(t *testing.T) {
 	checkNew(t, storage.NewMemoryStorage(testVersionLimit))
 }
-func TestMemoryStorageCreateUpdate(t *testing.T) {
-	checkCreateUpdate(t, storage.NewMemoryStorage(testVersionLimit))
+func TestMemoryStorageCreateUpdateDelete(t *testing.T) {
+	checkCreateUpdateDelete(t, storage.NewMemoryStorage(testVersionLimit))
 }
 
 func TestMemoryStorageGetX(t *testing.T) {
@@ -39,13 +39,13 @@ func TestFSStorageNew(t *testing.T) {
 	require.NoError(t, err)
 	checkNew(t, backend)
 }
-func TestFSStorageCreateUpdate(t *testing.T) {
-	path, err := os.MkdirTemp("", "TestFSStoragePut*")
+func TestFSStorageCreateUpdateDelete(t *testing.T) {
+	path, err := os.MkdirTemp("", "TestFSStorageCreateUpdateDelete*")
 	require.NoError(t, err)
 	defer os.RemoveAll(path)
 	backend, err := storage.NewFSStorage(path, testVersionLimit)
 	require.NoError(t, err)
-	checkCreateUpdate(t, backend)
+	checkCreateUpdateDelete(t, backend)
 }
 func TestFSStorageGetX(t *testing.T) {
 	path, err := os.MkdirTemp("", "TestFSStorageGetX*")
@@ -70,9 +70,9 @@ func checkNew(t *testing.T, backend storage.Backend) {
 	require.NotEqual(t, "", backend.URI())
 }
 
-func checkCreateUpdate(t *testing.T, backend storage.Backend) {
-	// checkCreateUpdate
+func checkCreateUpdateDelete(t *testing.T, backend storage.Backend) {
 	name := "checkCreateUpdate"
+	// Create
 	data1 := []byte{byte(1)}
 	version0, err := backend.Update(name, data1)
 	require.Equal(t, storage.ErrNotExist, err)
@@ -83,7 +83,7 @@ func checkCreateUpdate(t *testing.T, backend storage.Backend) {
 	data, err := backend.Get(createdName1)
 	require.NoError(t, err)
 	require.Equal(t, data1, data)
-	// checkCreateUpdate
+	// Create (same name)
 	data2 := []byte{byte(2)}
 	createdName2, err := backend.Create(name, data2)
 	require.NoError(t, err)
@@ -91,8 +91,14 @@ func checkCreateUpdate(t *testing.T, backend storage.Backend) {
 	data, err = backend.Get(createdName2)
 	require.NoError(t, err)
 	require.Equal(t, data2, data)
-	// list
+	// List
 	checkList(t, backend, []string{createdName1, createdName2})
+	// Delete
+	err = backend.Delete(createdName1)
+	require.NoError(t, err)
+	_, err = backend.Get(createdName1)
+	require.Equal(t, storage.ErrNotExist, err)
+	checkList(t, backend, []string{createdName2})
 }
 
 func checkList(t *testing.T, backend storage.Backend, expected []string) {

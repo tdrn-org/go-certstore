@@ -324,6 +324,16 @@ func (registry *Registry) Entry(name string) (*RegistryEntry, error) {
 	return entry, nil
 }
 
+func (registry *Registry) Delete(name string, user string) error {
+	err := registry.backend.Delete(name)
+	if err != nil {
+		return err
+	}
+	registry.entryCache.Delete(name)
+	registry.audit(auditDelete, name, user)
+	return nil
+}
+
 func (registry *Registry) CertPools() (*x509.CertPool, *x509.CertPool, error) {
 	roots := x509.NewCertPool()
 	intermediates := x509.NewCertPool()
@@ -429,6 +439,7 @@ const (
 	auditMergeCertificateRequest  auditPattern = "%d;Merge;CertificateRequest;%s;%s"
 	auditMergeKey                 auditPattern = "%d;Merge;Key;%s;%s"
 	auditMergeRevocationList      auditPattern = "%d;Merge;RevocationList;%s;%s"
+	auditDelete                   auditPattern = "%d;Delete;-;%s;%s"
 )
 
 func (pattern auditPattern) sprintf(name string, user string) string {

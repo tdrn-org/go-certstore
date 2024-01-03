@@ -92,6 +92,20 @@ func (backend *fsBackend) Update(name string, data []byte) (Version, error) {
 	return nextVersion, nil
 }
 
+func (backend *fsBackend) Delete(name string) error {
+	backend.logger.Debug().Msgf("deleting entry '%s'...", name)
+	entryPath, err := backend.checkEntryPath(name, false)
+	if err != nil {
+		return err
+	}
+	err = os.RemoveAll(entryPath)
+	if err != nil {
+		return fmt.Errorf("failed to delete entry '%s' (cause: %w)", name, err)
+	}
+	backend.logger.Debug().Msgf("entry '%s' deleted", name)
+	return nil
+}
+
 func (backend *fsBackend) List() (Names, error) {
 	dirEntries, err := os.ReadDir(backend.path)
 	if err != nil {

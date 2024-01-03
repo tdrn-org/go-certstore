@@ -112,8 +112,21 @@ func (backend *memoryBackend) Update(name string, data []byte) (Version, error) 
 	}
 	heap.Push(&versions, entry)
 	backend.entries[name] = versions
-	backend.logger.Debug().Msgf("entry '%s' updated to version %d", name, entry.version)
+	backend.logger.Debug().Msgf("updated entry '%s' to version %d", name, entry.version)
 	return entry.version, nil
+}
+
+func (backend *memoryBackend) Delete(name string) error {
+	backend.lock.Lock()
+	defer backend.lock.Unlock()
+	backend.logger.Debug().Msgf("deleting entry '%s'...", name)
+	_, exists := backend.entries[name]
+	if !exists {
+		return ErrNotExist
+	}
+	delete(backend.entries, name)
+	backend.logger.Debug().Msgf("entry '%s' deleted", name)
+	return nil
 }
 
 func (backend *memoryBackend) List() (Names, error) {

@@ -29,6 +29,7 @@ type Backend interface {
 	URI() string
 	Create(name string, data []byte) (string, error)
 	Update(name string, data []byte) (Version, error)
+	Delete(name string) error
 	List() (Names, error)
 	Get(name string) ([]byte, error)
 	GetVersions(name string) ([]Version, error)

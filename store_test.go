@@ -153,6 +153,31 @@ func TestEntries(t *testing.T) {
 	checkStoreEntries(t, registry, 1120, 10)
 }
 
+func TestDelete(t *testing.T) {
+	path, err := os.MkdirTemp("", "TestDelete*")
+	require.NoError(t, err)
+	defer os.RemoveAll(path)
+	backend, err := storage.NewFSStorage(path, testVersionLimit)
+	require.NoError(t, err)
+	registry, err := certstore.NewStore(backend, testCacheTTL)
+	require.NoError(t, err)
+	user := "TestDeleteUser"
+	populateTestStore(t, registry, user, 1)
+	checkStoreEntries(t, registry, 4, 1)
+	err = registry.Delete("request1", user)
+	require.NoError(t, err)
+	checkStoreEntries(t, registry, 3, 1)
+	err = registry.Delete("root1_intermediate1_leaf1", user)
+	require.NoError(t, err)
+	checkStoreEntries(t, registry, 2, 1)
+	err = registry.Delete("root1_intermediate1", user)
+	require.NoError(t, err)
+	checkStoreEntries(t, registry, 1, 1)
+	err = registry.Delete("root1", user)
+	require.NoError(t, err)
+	checkStoreEntries(t, registry, 0, 0)
+}
+
 func TestCertPools(t *testing.T) {
 	registry, err := certstore.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
 	require.NoError(t, err)
@@ -241,7 +266,7 @@ func createTestIntermediateEntries(t *testing.T, registry *certstore.Registry, i
 	issuerCert := issuerEntry.Certificate()
 	issuerKey := issuerEntry.Key(user)
 	for i := 0; i < count; i++ {
-		name := fmt.Sprintf("%s:intermediate%d", issuerName, i+1)
+		name := fmt.Sprintf("%s_intermediate%d", issuerName, i+1)
 		factory := newTestIntermediateCertificateFactory(name, issuerCert, issuerKey)
 		createdName, err := registry.CreateCertificate(name, factory, user)
 		require.NoError(t, err)
@@ -256,7 +281,7 @@ func createTestLeafEntries(t *testing.T, registry *certstore.Registry, issuerNam
 	issuerCert := issuerEntry.Certificate()
 	issuerKey := issuerEntry.Key(user)
 	for i := 0; i < count; i++ {
-		name := fmt.Sprintf("%s:leaf%d", issuerName, i+1)
+		name := fmt.Sprintf("%s_leaf%d", issuerName, i+1)
 		factory := newTestLeafCertificateFactory(name, issuerCert, issuerKey)
 		createdName, err := registry.CreateCertificate(name, factory, user)
 		require.NoError(t, err)
