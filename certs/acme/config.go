@@ -93,6 +93,8 @@ type ProviderConfig struct {
 	BasePath string `yaml:"-"`
 	// Name defines the name of this provider.
 	Name string `yaml:"-"`
+	// Enabled defines wether this provider is enabled (true) or not (false).
+	Enabled bool `yaml:"enabled"`
 	// URL defines the URL to use for accessing this provider.
 	URL string `yaml:"url"`
 	// RegistrationEmail defines the email to use for registering with this provider.
@@ -186,7 +188,7 @@ type DomainConfig struct {
 
 // A Http01ChallengeConfig configures the HTTP-01 challenge type for domain validation.
 type Http01ChallengeConfig struct {
-	// Enabled defines wether this challenge type is used (true) or not (false).
+	// Enabled defines wether this challenge type is enabled (true) or not (false).
 	Enabled bool `yaml:"enabled"`
 	// Iface sets the interface to listen on during domain verification (optional).
 	Iface string `yaml:"iface"`
