@@ -39,6 +39,7 @@ func TestFSStorageNew(t *testing.T) {
 	require.NoError(t, err)
 	checkNew(t, backend)
 }
+
 func TestFSStorageCreateUpdateDelete(t *testing.T) {
 	path, err := os.MkdirTemp("", "TestFSStorageCreateUpdateDelete*")
 	require.NoError(t, err)
@@ -47,6 +48,7 @@ func TestFSStorageCreateUpdateDelete(t *testing.T) {
 	require.NoError(t, err)
 	checkCreateUpdateDelete(t, backend)
 }
+
 func TestFSStorageGetX(t *testing.T) {
 	path, err := os.MkdirTemp("", "TestFSStorageGetX*")
 	require.NoError(t, err)
