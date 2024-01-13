@@ -5,7 +5,7 @@ providers:
     registration_email: "webmaster1@localhost"
     registration_path: "./acme-registrations.json"
   "Test2":
-    enabled: true
+    enabled: false
     url: "https://localhost:14000/dir"
     registration_email: "webmaster2@localhost"
     registration_path: "./acme-registrations.json"
