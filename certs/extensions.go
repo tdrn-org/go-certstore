@@ -147,15 +147,19 @@ const SubjectKeyIdentifierExtensionOID = "2.5.29.14"
 const AuthorityKeyIdentifierExtensionName = "AuthorityKeyIdentifier"
 const AuthorityKeyIdentifierExtensionOID = "2.5.29.35"
 
+func KeyIdentifierString(keyId []byte) string {
+	return RawExtensionString(keyId)
+}
+
 const stringLimit = 32
 
-func KeyIdentifierString(keyId []byte) string {
-	if len(keyId) == 0 {
+func RawExtensionString(extension []byte) string {
+	if len(extension) == 0 {
 		return ""
 	}
 	var builder strings.Builder
 	encoder := hex.NewEncoder(&builder)
-	for i := range keyId {
+	for i := range extension {
 		if i >= stringLimit {
 			builder.WriteString(":...")
 			break
@@ -163,7 +167,7 @@ func KeyIdentifierString(keyId []byte) string {
 		if builder.Len() > 0 {
 			builder.WriteString(":")
 		}
-		encoder.Write(keyId[i : i+1])
+		encoder.Write(extension[i : i+1])
 	}
 	return builder.String()
 }
