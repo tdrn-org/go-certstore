@@ -59,7 +59,7 @@ func newTestRootCert(t *testing.T, cn string) (crypto.PrivateKey, *x509.Certific
 	return keyPair.Private(), cert
 }
 
-func newTestIntermediateCert(t *testing.T, cn string, root *x509.Certificate, signer crypto.PrivateKey) (crypto.PrivateKey, *x509.Certificate) {
+func newTestIntermediateCert(t *testing.T, cn string, parent *x509.Certificate, signer crypto.PrivateKey) (crypto.PrivateKey, *x509.Certificate) {
 	keyPair := newTestKeyPair(t)
 	now := time.Now()
 	template := &x509.Certificate{
@@ -72,14 +72,14 @@ func newTestIntermediateCert(t *testing.T, cn string, root *x509.Certificate, si
 		NotBefore:             now,
 		NotAfter:              now.AddDate(0, 0, 1),
 	}
-	certBytes, err := x509.CreateCertificate(rand.Reader, template, template, keyPair.Public(), signer)
+	certBytes, err := x509.CreateCertificate(rand.Reader, template, parent, keyPair.Public(), signer)
 	require.NoError(t, err)
 	cert, err := x509.ParseCertificate(certBytes)
 	require.NoError(t, err)
 	return keyPair.Private(), cert
 }
 
-func newTestLeafCert(t *testing.T, cn string, root *x509.Certificate, signer crypto.PrivateKey) (crypto.PrivateKey, *x509.Certificate) {
+func newTestLeafCert(t *testing.T, cn string, parent *x509.Certificate, signer crypto.PrivateKey) (crypto.PrivateKey, *x509.Certificate) {
 	keyPair := newTestKeyPair(t)
 	now := time.Now()
 	template := &x509.Certificate{
@@ -88,7 +88,7 @@ func newTestLeafCert(t *testing.T, cn string, root *x509.Certificate, signer cry
 		NotBefore:    now,
 		NotAfter:     now.AddDate(0, 0, 1),
 	}
-	certBytes, err := x509.CreateCertificate(rand.Reader, template, template, keyPair.Public(), signer)
+	certBytes, err := x509.CreateCertificate(rand.Reader, template, parent, keyPair.Public(), signer)
 	require.NoError(t, err)
 	cert, err := x509.ParseCertificate(certBytes)
 	require.NoError(t, err)
