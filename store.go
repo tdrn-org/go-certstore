@@ -29,6 +29,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// A Registry represents a X.509 certificate store.
 type Registry struct {
 	settings   *storeSettings
 	backend    storage.Backend
@@ -36,10 +37,19 @@ type Registry struct {
 	logger     *zerolog.Logger
 }
 
+// Name gets the registry name which is derived from the registry's storage location.
 func (registry *Registry) Name() string {
 	return fmt.Sprintf("Registry[%s]", registry.backend.URI())
 }
 
+// CreateCertificate creates a new X.509 certificate using the provided [certs.CertificateFactory].
+//
+// The name of the created store entry is returned. The returned name is derived
+// from the submitted name, by making it unique. Means, if the submitted name is
+// not already in use, it is returned as is. Otherwise it is made unique by appending
+// a suffix.
+//
+// Calling this function is recorded in the audit log using the the submitted user name.
 func (registry *Registry) CreateCertificate(name string, factory certs.CertificateFactory, user string) (string, error) {
 	key, certificate, err := factory.New()
 	if err != nil {
@@ -60,6 +70,13 @@ func (registry *Registry) CreateCertificate(name string, factory certs.Certifica
 	return createdName, err
 }
 
+// MergeCertificate merges a X.509 certificate into the store.
+//
+// If the certfiicate is already in the store, the name of the existing store entry as well as false is returned.
+// If the certificate is not yet in the store, it is added and name of the added store entry as well as true is returned.
+// Like for [CreateCertificate] the submitted name is used to derive the name of the added store entry.
+//
+// Calling this function is recorded in the audit log using the the submitted user name.
 func (registry *Registry) MergeCertificate(name string, certificate *x509.Certificate, user string) (string, bool, error) {
 	entries, err := registry.Entries()
 	if err != nil {
@@ -97,6 +114,14 @@ func (registry *Registry) MergeCertificate(name string, certificate *x509.Certif
 	return mergedName, merged, nil
 }
 
+// CreateCertificateRequest creates a new X.509 certificate request using the provided [certs.CertificateRequestFactory].
+//
+// The name of the created store entry is returned. The returned name is derived
+// from the submitted name, by making it unique. Means, if the submitted name is
+// not already in use, it is returned as is. Otherwise it is made unique by appending
+// a suffix.
+//
+// Calling this function is recorded in the audit log using the the submitted user name.
 func (registry *Registry) CreateCertificateRequest(name string, factory certs.CertificateRequestFactory, user string) (string, error) {
 	key, certificateRequest, err := factory.New()
 	if err != nil {
@@ -115,6 +140,13 @@ func (registry *Registry) CreateCertificateRequest(name string, factory certs.Ce
 	return createdName, err
 }
 
+// MergeCertificateRequest merges a X.509 certificate request into the store.
+//
+// If the certfiicate request is already in the store, the name of the existing store entry as well as false is returned.
+// If the certificate request is not yet in the store, it is added and name of the added store entry as well as true is returned.
+// Like for [CreateCertificateRequest] the submitted name is used to derive the name of the added store entry.
+//
+// Calling this function is recorded in the audit log using the the submitted user name.
 func (registry *Registry) MergeCertificateRequest(name string, certificateRequest *x509.CertificateRequest, user string) (string, bool, error) {
 	entries, err := registry.Entries()
 	if err != nil {
@@ -152,6 +184,13 @@ func (registry *Registry) MergeCertificateRequest(name string, certificateReques
 	return mergedName, merged, nil
 }
 
+// MergeKey merges a X.509 certificate key into the store.
+//
+// If the certfiicate key is already in the store, the name of the existing store entry as well as false is returned.
+// If the certificate key is not yet in the store, it is added and name of the added store entry as well as true is returned.
+// Like for [CreateCertificate] the submitted name is used to derive the name of the added store entry.
+//
+// Calling this function is recorded in the audit log using the the submitted user name.
 func (registry *Registry) MergeKey(name string, key crypto.PrivateKey, user string) (string, bool, error) {
 	entries, err := registry.Entries()
 	if err != nil {
@@ -189,6 +228,13 @@ func (registry *Registry) MergeKey(name string, key crypto.PrivateKey, user stri
 	return mergedName, merged, nil
 }
 
+// MergeRevocationList merges a X.509 certificate revocation list into the store.
+//
+// If the revocation list is already in the store, the name of the existing store entry as well as false is returned.
+// If the revocation list is not yet in the store, it is added and name of the added store entry as well as true is returned.
+// Like for [CreateCertificate] the submitted name is used to derive the name of the added store entry.
+//
+// Calling this function is recorded in the audit log using the the submitted user name.
 func (registry *Registry) MergeRevocationList(name string, revocationList *x509.RevocationList, user string) (string, bool, error) {
 	entries, err := registry.Entries()
 	if err != nil {
@@ -226,6 +272,11 @@ func (registry *Registry) MergeRevocationList(name string, revocationList *x509.
 	return mergedName, merged, nil
 }
 
+// Merge merges another X.509 certificate store into the store.
+//
+// The submitted store is merged by merging each of its entries individually.
+//
+// Calling this function is recorded in the audit log using the the submitted user name.
 func (registry *Registry) Merge(other *Registry, user string) error {
 	otherEntries, err := other.Entries()
 	if err != nil {
@@ -275,6 +326,11 @@ func (registry *Registry) mergeEntry(entry *RegistryEntry, user string) error {
 	return nil
 }
 
+// Entries lists all entries of the store.
+//
+// The returned [RegistryEntries] collection is sorted in lexical order and backed up by the store.
+// Deleting a store entry after querying the [RegistryEntries] collection will cause a [storage.ErrNotExist]
+// whenever the deleted entry is traversed.
 func (registry *Registry) Entries() (*RegistryEntries, error) {
 	names, err := registry.backend.List()
 	if err != nil {
@@ -283,6 +339,9 @@ func (registry *Registry) Entries() (*RegistryEntries, error) {
 	return &RegistryEntries{registry: registry, names: names}, nil
 }
 
+// Entry looks up the entry with the submitted name in the store.
+//
+// If the submitted name does not exist, [storage.ErrNotExist] is returned.
 func (registry *Registry) Entry(name string) (*RegistryEntry, error) {
 	if registry.entryCache != nil {
 		cached := registry.entryCache.Get(name)
@@ -324,6 +383,9 @@ func (registry *Registry) Entry(name string) (*RegistryEntry, error) {
 	return entry, nil
 }
 
+// Delete deletes the entry with the submitted name from the store.
+//
+// If the submitted name does not exist, [storage.ErrNotExist] is returned.
 func (registry *Registry) Delete(name string, user string) error {
 	err := registry.backend.Delete(name)
 	if err != nil {
@@ -334,6 +396,9 @@ func (registry *Registry) Delete(name string, user string) error {
 	return nil
 }
 
+// CertPools wraps this store's entries into a [x509.CertPool].
+//
+// The first returned pool contains the root certificates. The second on the intermediate certificates.
 func (registry *Registry) CertPools() (*x509.CertPool, *x509.CertPool, error) {
 	roots := x509.NewCertPool()
 	intermediates := x509.NewCertPool()
@@ -446,11 +511,15 @@ func (pattern auditPattern) sprintf(name string, user string) string {
 	return fmt.Sprintf(string(pattern), time.Now().UnixMilli(), name, user)
 }
 
+// RegistryEntries represents a traversable collection of store entries.
 type RegistryEntries struct {
 	registry *Registry
 	names    storage.Names
 }
 
+// Next gets the next store entry in the collection.
+//
+// nil is returned if the collection is exausted.
 func (entries *RegistryEntries) Next() (*RegistryEntry, error) {
 	var name string
 	for {
@@ -465,6 +534,9 @@ func (entries *RegistryEntries) Next() (*RegistryEntry, error) {
 	return entries.registry.Entry(name)
 }
 
+// Find looks up the next store entry in the collection matching the submitted match function.
+//
+// nil is returned if the none of the remaining store entries matches.
 func (entries *RegistryEntries) Find(match func(entry *RegistryEntry) bool) (*RegistryEntry, error) {
 	entry, err := entries.Next()
 	for {
@@ -779,10 +851,7 @@ func (entryData *registryEntryData) encryptData(data []byte, secret string) ([]b
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate nonce (cause: %w)", err)
 	}
-	encrypted, err := gcm.Seal(nonce, nonce, data, nil), nil
-	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt data (cause: %w)", err)
-	}
+	encrypted := gcm.Seal(nonce, nonce, data, nil)
 	return encrypted, nil
 }
 
