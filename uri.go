@@ -15,6 +15,21 @@ import (
 	"github.com/hdecarne-github/go-certstore/storage"
 )
 
+// NewStoreFromURI creates a certificate store based upon the submitted uri and base path.
+//
+// Supported uri formats are:
+//
+//  1. memory://<?parameters> (e.g. memory://?cache_ttl=60s&version_limit=10)
+//  2. fs://<path><?parameters> (e.g. fs://./certs?cache_ttl=60s&version_limit=10)
+//
+// Relative paths are evaluated using the submitted base path.
+//
+// Known uri parameters are:
+//
+//  1. cache_ttl: The cache ttl (see [time.ParseDuration])
+//  1. cache_ttl: The version limit (see [time.ParseUint])
+//
+// See [NewStore] for further details.
 func NewStoreFromURI(uri string, basePath string) (*Registry, error) {
 	parsedURI, err := url.Parse(uri)
 	if err != nil {

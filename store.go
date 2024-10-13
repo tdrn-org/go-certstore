@@ -15,6 +15,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"runtime"
@@ -28,6 +29,8 @@ import (
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/rs/zerolog"
 )
+
+var ErrInvalidIssuer = errors.New("invalid issuer certificate")
 
 // A Registry represents a X.509 certificate store.
 type Registry struct {
@@ -49,7 +52,7 @@ func (registry *Registry) Name() string {
 // not already in use, it is returned as is. Otherwise it is made unique by appending
 // a suffix.
 //
-// Calling this function is recorded in the audit log using the the submitted user name.
+// Invoking this function is recorded in the audit log using the the submitted user name.
 func (registry *Registry) CreateCertificate(name string, factory certs.CertificateFactory, user string) (string, error) {
 	key, certificate, err := factory.New()
 	if err != nil {
@@ -76,7 +79,7 @@ func (registry *Registry) CreateCertificate(name string, factory certs.Certifica
 // If the certificate is not yet in the store, it is added and name of the added store entry as well as true is returned.
 // Like for [CreateCertificate] the submitted name is used to derive the name of the added store entry.
 //
-// Calling this function is recorded in the audit log using the the submitted user name.
+// Invoking this function is recorded in the audit log using the the submitted user name.
 func (registry *Registry) MergeCertificate(name string, certificate *x509.Certificate, user string) (string, bool, error) {
 	entries, err := registry.Entries()
 	if err != nil {
@@ -121,7 +124,7 @@ func (registry *Registry) MergeCertificate(name string, certificate *x509.Certif
 // not already in use, it is returned as is. Otherwise it is made unique by appending
 // a suffix.
 //
-// Calling this function is recorded in the audit log using the the submitted user name.
+// Invoking this function is recorded in the audit log using the the submitted user name.
 func (registry *Registry) CreateCertificateRequest(name string, factory certs.CertificateRequestFactory, user string) (string, error) {
 	key, certificateRequest, err := factory.New()
 	if err != nil {
@@ -146,7 +149,7 @@ func (registry *Registry) CreateCertificateRequest(name string, factory certs.Ce
 // If the certificate request is not yet in the store, it is added and name of the added store entry as well as true is returned.
 // Like for [CreateCertificateRequest] the submitted name is used to derive the name of the added store entry.
 //
-// Calling this function is recorded in the audit log using the the submitted user name.
+// Invoking this function is recorded in the audit log using the the submitted user name.
 func (registry *Registry) MergeCertificateRequest(name string, certificateRequest *x509.CertificateRequest, user string) (string, bool, error) {
 	entries, err := registry.Entries()
 	if err != nil {
@@ -190,7 +193,7 @@ func (registry *Registry) MergeCertificateRequest(name string, certificateReques
 // If the certificate key is not yet in the store, it is added and name of the added store entry as well as true is returned.
 // Like for [CreateCertificate] the submitted name is used to derive the name of the added store entry.
 //
-// Calling this function is recorded in the audit log using the the submitted user name.
+// Invoking this function is recorded in the audit log using the the submitted user name.
 func (registry *Registry) MergeKey(name string, key crypto.PrivateKey, user string) (string, bool, error) {
 	entries, err := registry.Entries()
 	if err != nil {
@@ -234,7 +237,7 @@ func (registry *Registry) MergeKey(name string, key crypto.PrivateKey, user stri
 // If the revocation list is not yet in the store, it is added and name of the added store entry as well as true is returned.
 // Like for [CreateCertificate] the submitted name is used to derive the name of the added store entry.
 //
-// Calling this function is recorded in the audit log using the the submitted user name.
+// Invoking this function is recorded in the audit log using the the submitted user name.
 func (registry *Registry) MergeRevocationList(name string, revocationList *x509.RevocationList, user string) (string, bool, error) {
 	entries, err := registry.Entries()
 	if err != nil {
@@ -276,7 +279,7 @@ func (registry *Registry) MergeRevocationList(name string, revocationList *x509.
 //
 // The submitted store is merged by merging each of its entries individually.
 //
-// Calling this function is recorded in the audit log using the the submitted user name.
+// Invoking this function is recorded in the audit log using the the submitted user name.
 func (registry *Registry) Merge(other *Registry, user string) error {
 	otherEntries, err := other.Entries()
 	if err != nil {
@@ -551,6 +554,7 @@ func (entries *RegistryEntries) Find(match func(entry *RegistryEntry) bool) (*Re
 	return entry, nil
 }
 
+// RegistryEntry represents a single store entry.
 type RegistryEntry struct {
 	registry           *Registry
 	name               string
@@ -561,10 +565,14 @@ type RegistryEntry struct {
 	attributes         map[string]string
 }
 
+// Name gets the name of the store entry.
 func (entry *RegistryEntry) Name() string {
 	return entry.name
 }
 
+// IsRoot reports whether this store entry represents a root certificate.
+//
+// A store entry represents a root certificate if it contains a certificate and the latter is self-signed.
 func (entry *RegistryEntry) IsRoot() bool {
 	if entry.certificate == nil {
 		return false
@@ -572,6 +580,9 @@ func (entry *RegistryEntry) IsRoot() bool {
 	return certs.IsRoot(entry.certificate)
 }
 
+// IsCA reports whether this store entry represents a certificate authority.
+//
+// A store entry represents a certificate authoritiy if it contains a certificate and the latter is entitled to sign certifictes.
 func (entry *RegistryEntry) IsCA() bool {
 	if entry.certificate == nil {
 		return false
@@ -579,14 +590,28 @@ func (entry *RegistryEntry) IsCA() bool {
 	return entry.certificate.IsCA
 }
 
+// CanIssue determines if this store entry can be used to issue new certificates for the submitted key usage.
+//
+// I order to be able to issue new certificates a store entry must match the following prerequisites:
+//
+//  1. entry contains certificate ([HasCertificate]) and key ([HasKey])
+//  2. the contained certificate must have a valid BasicConstraints extension ([x509.Certificate.BasicConstraintsValid])
+//  3. the contained certificate must be marked as a CA ([IsCA])
+//  4. the contained certificate's key usage matches the submitted one.
 func (entry *RegistryEntry) CanIssue(keyUsage x509.KeyUsage) bool {
 	return entry.key != nil && entry.certificate != nil && entry.certificate.BasicConstraintsValid && entry.certificate.IsCA && (entry.certificate.KeyUsage&keyUsage) == keyUsage
 }
 
+// HasKey reports whether this store entry contains a key.
 func (entry *RegistryEntry) HasKey() bool {
 	return entry.key != nil
 }
 
+// Key gets the store entry's key.
+//
+// nil is returned if the store entry does not contain a key.
+//
+// Invoking this function is recorded in the audit log using the the submitted user name.
 func (entry *RegistryEntry) Key(user string) crypto.PrivateKey {
 	if entry.key != nil {
 		entry.registry.audit(auditAccessKey, entry.name, user)
@@ -594,25 +619,39 @@ func (entry *RegistryEntry) Key(user string) crypto.PrivateKey {
 	return entry.key
 }
 
+// HasCertificate reports whether this store entry contains a certificate.
 func (entry *RegistryEntry) HasCertificate() bool {
 	return entry.certificate != nil
 }
 
+// Certificate gets the store entry's certificate.
+//
+// nil is returned if the store entry does not contain a certificate.
 func (entry *RegistryEntry) Certificate() *x509.Certificate {
 	return entry.certificate
 }
 
+// HasCertificateRequest reports whether this store entry contains a certificate request.
 func (entry *RegistryEntry) HasCertificateRequest() bool {
 	return entry.certificateRequest != nil
 }
 
+// CertificateRequest gets the store entry's certificate request.
+//
+// nil is returned if the store entry does not contain a certificate request.
 func (entry *RegistryEntry) CertificateRequest() *x509.CertificateRequest {
 	return entry.certificateRequest
 }
 
+// ResetRevocationList resets the store entry's revocation list using the submitted [certs.RevocationListFactory].
+//
+// The newly created [x509.RevocationList] is returned.
+// If the store entry is not suitable for signing a revocation list, [ErrInvalidIssuer] is returned.
+//
+// Invoking this function is recorded in the audit log using the the submitted user name.
 func (entry *RegistryEntry) ResetRevocationList(factory certs.RevocationListFactory, user string) (*x509.RevocationList, error) {
 	if !entry.CanIssue(x509.KeyUsageCRLSign) {
-		return nil, fmt.Errorf("cannot create revocation list for selected certificate")
+		return nil, ErrInvalidIssuer
 	}
 	revocationList, err := factory.New(entry.Certificate(), entry.Key(user))
 	if err != nil {
@@ -626,18 +665,26 @@ func (entry *RegistryEntry) ResetRevocationList(factory certs.RevocationListFact
 	return revocationList, nil
 }
 
+// HasRevocationList reports whether this store entry contains a revocation list.
 func (entry *RegistryEntry) HasRevocationList() bool {
 	return entry.revocationList != nil
 }
 
+// RevocationList gets the store entry's revocation list.
+//
+// nil is returned if the store entry does not contain a revocation list.
 func (entry *RegistryEntry) RevocationList() *x509.RevocationList {
 	return entry.revocationList
 }
 
+// Attributes gets the attributes (key value pairs) associated with the store entry.
 func (entry *RegistryEntry) Attributes() map[string]string {
 	return maps.Clone(entry.attributes)
 }
 
+// SetAttributes sets the attributes (key value pairs) associated with the store entry.
+//
+// Any previously set attributes are overwritten or removed if no longer defined.
 func (entry *RegistryEntry) SetAttributes(attributes map[string]string) error {
 	err := entry.mergeAttributes(attributes)
 	if err != nil {
@@ -892,6 +939,10 @@ type storeSettings struct {
 	Secret string `json:"secret"`
 }
 
+// NewStore creates a certificate store using the submitted storage backend and parameters.
+//
+// If the submitted storage location is used for the first time, a new certificate store is setup.
+// Using the same storage location again, opens the previously created certificate store.
 func NewStore(backend storage.Backend, cacheTTL time.Duration) (*Registry, error) {
 	logger := log.RootLogger().With().Str("Registry", backend.URI()).Logger()
 	settings, err := newStoreSettings(backend, &logger)
