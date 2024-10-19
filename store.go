@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"runtime"
 	"strings"
@@ -30,6 +31,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
+var ErrNoKey = errors.New("no key")
+var ErrNoCertificate = errors.New("no certificate")
 var ErrInvalidIssuer = errors.New("invalid issuer certificate")
 
 // A Registry represents a X.509 certificate store.
@@ -629,6 +632,125 @@ func (entry *RegistryEntry) HasCertificate() bool {
 // nil is returned if the store entry does not contain a certificate.
 func (entry *RegistryEntry) Certificate() *x509.Certificate {
 	return entry.certificate
+}
+
+type ExportOption int
+
+const (
+	ExportOptionKey       ExportOption = 1 << 0
+	ExportOptionChain     ExportOption = 1 << 1
+	ExportOptionFullChain ExportOption = ExportOptionChain | (1 << 2)
+	ExportOptionDefault   ExportOption = ExportOptionKey | ExportOptionChain
+)
+
+var ExportFormatPEM ExportFormat = &exportFormatPEM{}
+var ExportFormatDER ExportFormat = &exportFormatDER{}
+var ExportFormatPKCS12 ExportFormat = &exportFormatPKCS12{}
+
+type ExportFormat interface {
+	Name() string
+	ContentType() string
+	CanExport(certificate *x509.Certificate, chain []*x509.Certificate, key crypto.PrivateKey) error
+	Export(out io.Writer, certificate *x509.Certificate, chain []*x509.Certificate, key crypto.PrivateKey, password string) error
+}
+
+func (entry *RegistryEntry) Export(out io.Writer, format ExportFormat, option ExportOption, password string, user string) error {
+	if entry.certificate == nil {
+		return ErrNoCertificate
+	}
+	var chain []*x509.Certificate
+	if (option & ExportOptionChain) == ExportOptionChain {
+		roots, intermediates, err := entry.registry.CertPools()
+		if err != nil {
+			return err
+		}
+		chains, err := entry.certificate.Verify(x509.VerifyOptions{
+			Roots:         roots,
+			Intermediates: intermediates,
+			CurrentTime:   entry.certificate.NotBefore})
+		if err == nil {
+			if len(chains[0]) == 1 || (option&ExportOptionFullChain) == ExportOptionFullChain {
+				chain = chains[0][1:]
+			} else {
+				chain = chains[0][1 : len(chains[0])-1]
+			}
+		}
+	}
+	var key crypto.PrivateKey
+	if (option & ExportOptionKey) == ExportOptionKey {
+		key = entry.Key(user)
+	}
+	err := format.CanExport(entry.certificate, chain, key)
+	if err != nil {
+		return err
+	}
+	return format.Export(out, entry.certificate, chain, key, password)
+}
+
+type exportFormatPEM struct{}
+
+func (format *exportFormatPEM) Name() string {
+	return "PEM"
+}
+
+func (format *exportFormatPEM) ContentType() string {
+	return "application/zip"
+}
+
+func (format *exportFormatPEM) CanExport(certificate *x509.Certificate, chain []*x509.Certificate, key crypto.PrivateKey) error {
+	if certificate == nil {
+		return ErrNoCertificate
+	}
+	return nil
+}
+
+func (format *exportFormatPEM) Export(out io.Writer, certificate *x509.Certificate, chain []*x509.Certificate, key crypto.PrivateKey, password string) error {
+	return certs.ExportPEM(out, certificate, chain, key)
+}
+
+type exportFormatDER struct{}
+
+func (format *exportFormatDER) ContentType() string {
+	return "application/zip"
+}
+
+func (format *exportFormatDER) Name() string {
+	return "DER"
+}
+
+func (format *exportFormatDER) CanExport(certificate *x509.Certificate, chain []*x509.Certificate, key crypto.PrivateKey) error {
+	if certificate == nil {
+		return ErrNoCertificate
+	}
+	return nil
+}
+
+func (format *exportFormatDER) Export(out io.Writer, certificate *x509.Certificate, chain []*x509.Certificate, key crypto.PrivateKey, password string) error {
+	return certs.ExportDER(out, certificate, chain, key)
+}
+
+type exportFormatPKCS12 struct{}
+
+func (format *exportFormatPKCS12) Name() string {
+	return "PKCS#12"
+}
+
+func (format *exportFormatPKCS12) ContentType() string {
+	return "application/octet-stream"
+}
+
+func (format *exportFormatPKCS12) CanExport(certificate *x509.Certificate, chain []*x509.Certificate, key crypto.PrivateKey) error {
+	if certificate == nil {
+		return ErrNoCertificate
+	}
+	if key == nil {
+		return ErrNoKey
+	}
+	return nil
+}
+
+func (format *exportFormatPKCS12) Export(out io.Writer, certificate *x509.Certificate, chain []*x509.Certificate, key crypto.PrivateKey, password string) error {
+	return certs.ExportPKCS12(out, certificate, chain, key, password)
 }
 
 // HasCertificateRequest reports whether this store entry contains a certificate request.

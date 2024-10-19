@@ -6,6 +6,7 @@
 package certstore_test
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -25,6 +26,7 @@ import (
 const testVersionLimit storage.VersionLimit = 2
 const testCacheTTL = time.Minute * 10
 const testKeyAlg = keys.ECDSA256
+const testPassword = "secret"
 
 func TestNewStore(t *testing.T) {
 	registry, err := certstore.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
@@ -196,11 +198,11 @@ func TestCertPools(t *testing.T) {
 			break
 		}
 		if entry.HasCertificate() {
-			options := &x509.VerifyOptions{
+			options := x509.VerifyOptions{
 				Roots:         roots,
 				Intermediates: intermediates,
 			}
-			chains, err := entry.Certificate().Verify(*options)
+			chains, err := entry.Certificate().Verify(options)
 			require.NoError(t, err)
 			require.Equal(t, 1, len(chains))
 			if entry.IsRoot() {
@@ -210,6 +212,48 @@ func TestCertPools(t *testing.T) {
 			} else {
 				require.Equal(t, 3, len(chains[0]))
 			}
+		}
+	}
+}
+
+func TestExport(t *testing.T) {
+	registry, err := certstore.NewStore(storage.NewMemoryStorage(testVersionLimit), 0)
+	require.NoError(t, err)
+	user := "TestExportUser"
+	populateTestStore(t, registry, user, 1)
+	entries, err := registry.Entries()
+	require.NoError(t, err)
+	for {
+		entry, err := entries.Next()
+		require.NoError(t, err)
+		if entry == nil {
+			break
+		}
+		if entry.HasKey() && entry.HasCertificate() {
+			var buffer bytes.Buffer
+			err = entry.Export(&buffer, certstore.ExportFormatPEM, certstore.ExportOptionDefault, testPassword, user)
+			require.NoError(t, err)
+			require.NotZero(t, buffer.Len())
+			buffer.Reset()
+			err = entry.Export(&buffer, certstore.ExportFormatPEM, certstore.ExportOptionDefault|certstore.ExportOptionFullChain, testPassword, user)
+			require.NoError(t, err)
+			require.NotZero(t, buffer.Len())
+			buffer.Reset()
+			err = entry.Export(&buffer, certstore.ExportFormatDER, certstore.ExportOptionDefault, testPassword, user)
+			require.NoError(t, err)
+			require.NotZero(t, buffer.Len())
+			buffer.Reset()
+			err = entry.Export(&buffer, certstore.ExportFormatDER, certstore.ExportOptionDefault|certstore.ExportOptionFullChain, testPassword, user)
+			require.NoError(t, err)
+			require.NotZero(t, buffer.Len())
+			buffer.Reset()
+			err = entry.Export(&buffer, certstore.ExportFormatPKCS12, certstore.ExportOptionDefault, testPassword, user)
+			require.NoError(t, err)
+			require.NotZero(t, buffer.Len())
+			buffer.Reset()
+			err = entry.Export(&buffer, certstore.ExportFormatPKCS12, certstore.ExportOptionDefault|certstore.ExportOptionFullChain, testPassword, user)
+			require.NoError(t, err)
+			require.NotZero(t, buffer.Len())
 		}
 	}
 }
