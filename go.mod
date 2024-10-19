@@ -5,6 +5,7 @@ go 1.23.2
 require (
 	github.com/rs/zerolog v1.33.0
 	github.com/stretchr/testify v1.9.0
+	software.sslmate.com/src/go-pkcs12 v0.5.0
 )
 
 require (
