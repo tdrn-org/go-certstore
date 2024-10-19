@@ -215,7 +215,11 @@ func ExportPEM(out io.Writer, certificate *x509.Certificate, chain []*x509.Certi
 			return nil
 		}
 	}
-	return zip.Flush()
+	err := zip.Close()
+	if err != nil {
+		return fmt.Errorf("failed to write PEM archive (cause: %w)", err)
+	}
+	return nil
 }
 
 func exportCertificatePEM(zip *zip.Writer, certificate *x509.Certificate) error {
@@ -299,7 +303,11 @@ func ExportDER(out io.Writer, certificate *x509.Certificate, chain []*x509.Certi
 			return nil
 		}
 	}
-	return zip.Flush()
+	err := zip.Close()
+	if err != nil {
+		return fmt.Errorf("failed to write DER archive (cause: %w)", err)
+	}
+	return nil
 }
 
 func exportCertificateDER(zip *zip.Writer, certificate *x509.Certificate) error {
