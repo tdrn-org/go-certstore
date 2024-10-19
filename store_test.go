@@ -254,6 +254,7 @@ func TestExport(t *testing.T) {
 			err = entry.Export(&buffer, certstore.ExportFormatPKCS12, certstore.ExportOptionDefault|certstore.ExportOptionFullChain, testPassword, user)
 			require.NoError(t, err)
 			require.NotZero(t, buffer.Len())
+			buffer.Reset()
 		}
 	}
 }

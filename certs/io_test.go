@@ -14,21 +14,21 @@ import (
 )
 
 func TestReadPEMCertificatesFile(t *testing.T) {
-	certificates, err := certs.ReadCertificatesFile("./testdata/isrgrootx1.pem")
+	certificates, err := certs.ReadCertificatesFile("./testdata/fullchain.pem")
 	require.NoError(t, err)
 	require.NotNil(t, certificates)
-	require.Equal(t, 1, len(certificates))
+	require.Equal(t, 2, len(certificates))
 }
 
 func TestReadDERCertificatesFile(t *testing.T) {
-	certificates, err := certs.ReadCertificatesFile("./testdata/isrgrootx1.der")
+	certificates, err := certs.ReadCertificatesFile("./testdata/fullchain.der")
 	require.NoError(t, err)
 	require.NotNil(t, certificates)
-	require.Equal(t, 1, len(certificates))
+	require.Equal(t, 2, len(certificates))
 }
 
 func TestWritePEMCertificateFile(t *testing.T) {
-	certificates, err := certs.ReadCertificatesFile("./testdata/isrgrootx1.pem")
+	certificates, err := certs.ReadCertificatesFile("./testdata/fullchain.pem")
 	require.NoError(t, err)
 	file, err := os.CreateTemp("", "PEMCertificate*")
 	require.NoError(t, err)
@@ -44,7 +44,7 @@ func TestWritePEMCertificateFile(t *testing.T) {
 }
 
 func TestWriteDERCertificateFile(t *testing.T) {
-	certificates, err := certs.ReadCertificatesFile("./testdata/isrgrootx1.der")
+	certificates, err := certs.ReadCertificatesFile("./testdata/fullchain.der")
 	require.NoError(t, err)
 	file, err := os.CreateTemp("", "DERCertificate*")
 	require.NoError(t, err)
