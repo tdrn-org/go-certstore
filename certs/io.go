@@ -22,11 +22,11 @@ import (
 
 // ReadCertificates reads X.509 certificates from the given [io.Reader].
 func ReadCertificates(in io.Reader) ([]*x509.Certificate, error) {
-	bytes, err := io.ReadAll(in)
+	encoded, err := io.ReadAll(in)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read certificates (cause: %w)", err)
 	}
-	decoded, err := decodeCertificates(bytes)
+	decoded, err := decodeCertificates(encoded)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode certificates (cause: %w)", err)
 	}
@@ -35,34 +35,82 @@ func ReadCertificates(in io.Reader) ([]*x509.Certificate, error) {
 
 // ReadCertificatesFile reads X.509 certificates from the given file name.
 func ReadCertificatesFile(filename string) ([]*x509.Certificate, error) {
-	bytes, err := os.ReadFile(filename)
+	encoded, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read certificates from file '%s' (cause: %w)", filename, err)
 	}
-	decoded, err := decodeCertificates(bytes)
+	decoded, err := decodeCertificates(encoded)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode certificates from file '%s' (cause: %w)", filename, err)
 	}
 	return decoded, nil
 }
 
-func decodeCertificates(bytes []byte) ([]*x509.Certificate, error) {
+// ReadKey reads a private key from the given [io.Reader].
+func ReadKey(in io.Reader) (crypto.PrivateKey, error) {
+	encoded, err := io.ReadAll(in)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read key (cause: %w)", err)
+	}
+	decoded, err := decodeKey(encoded)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode key (cause: %w)", err)
+	}
+	return decoded, nil
+}
+
+// ReadKeyFile reads a private key from the given file name.
+func ReadKeyFile(filename string) (crypto.PrivateKey, error) {
+	encoded, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read key from file '%s' (cause: %w)", filename, err)
+	}
+	decoded, err := decodeKey(encoded)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode key from file '%s' (cause: %w)", filename, err)
+	}
+	return decoded, nil
+}
+
+func decodeCertificates(encoded []byte) ([]*x509.Certificate, error) {
 	decoded := make([]*x509.Certificate, 0)
-	block, rest := pem.Decode(bytes)
+	block, rest := pem.Decode(encoded)
 	for block != nil {
 		certs, err := x509.ParseCertificates(block.Bytes)
 		if err != nil {
-			return decoded, err
+			return decoded, fmt.Errorf("failed to parse certificate (cause: %w)", err)
 		}
 		decoded = append(decoded, certs...)
 		block, rest = pem.Decode(rest)
 	}
 	if len(decoded) == 0 {
-		certs, err := x509.ParseCertificates(bytes)
+		certs, err := x509.ParseCertificates(encoded)
 		if err != nil {
-			return decoded, err
+			return decoded, fmt.Errorf("failed to parse certificate (cause: %w)", err)
 		}
 		decoded = append(decoded, certs...)
+	}
+	return decoded, nil
+}
+
+func decodeKey(encoded []byte) (crypto.PrivateKey, error) {
+	var decoded crypto.PrivateKey
+	block, _ := pem.Decode(encoded)
+	if block != nil {
+		if block.Type != "PRIVATE KEY" {
+			return nil, fmt.Errorf("unsupported PEM block '%s'", block.Type)
+		}
+		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse private key (cause: %w)", err)
+		}
+		decoded = key
+	} else {
+		key, err := x509.ParsePKCS8PrivateKey(encoded)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse private key (cause: %w)", err)
+		}
+		decoded = key
 	}
 	return decoded, nil
 }
@@ -77,6 +125,25 @@ func WriteCertificatesPEM(out io.Writer, certificates []*x509.Certificate) error
 // WriteCertificatesPEMFile writes X.509 certificates in PEM format to the given file name.
 func WriteCertificatesPEMFile(filename string, certificates []*x509.Certificate, perm os.FileMode) error {
 	encoded := encodeCertificatesPEM(certificates)
+	return os.WriteFile(filename, encoded, perm)
+}
+
+// WriteKeyPEM writes a private key in PEM format to the given [io.Writer].
+func WriteKeyPEM(out io.Writer, key crypto.PrivateKey) error {
+	encoded, err := encodeKeyPEM(key)
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(encoded)
+	return err
+}
+
+// WriteKeyPEMFile writes a private key in PEM format to the given file name.
+func WriteKeyPEMFile(filename string, key crypto.PrivateKey, perm os.FileMode) error {
+	encoded, err := encodeKeyPEM(key)
+	if err != nil {
+		return err
+	}
 	return os.WriteFile(filename, encoded, perm)
 }
 
@@ -115,6 +182,25 @@ func WriteCertificatesDER(out io.Writer, certificates []*x509.Certificate) error
 // WriteCertificatesDERFile writes X.509 certificates in DER format to the given file.
 func WriteCertificatesDERFile(filename string, certificates []*x509.Certificate, perm os.FileMode) error {
 	encoded := encodeCertificatesDER(certificates)
+	return os.WriteFile(filename, encoded, perm)
+}
+
+// WriteKeyDER writes a private key in DER format to the given [io.Writer].
+func WriteKeyDER(out io.Writer, key crypto.PrivateKey) error {
+	encoded, err := encodeKeyDER(key)
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(encoded)
+	return err
+}
+
+// WriteKeyDERFile writes a private key in DER format to the given file.
+func WriteKeyDERFile(filename string, key crypto.PrivateKey, perm os.FileMode) error {
+	encoded, err := encodeKeyDER(key)
+	if err != nil {
+		return err
+	}
 	return os.WriteFile(filename, encoded, perm)
 }
 
