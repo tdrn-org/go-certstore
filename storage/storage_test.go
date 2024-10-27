@@ -10,8 +10,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/hdecarne-github/go-certstore/storage"
 	"github.com/stretchr/testify/require"
+	"github.com/tdrn-org/go-certstore/storage"
 )
 
 const testVersionLimit storage.VersionLimit = 2

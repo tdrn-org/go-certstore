@@ -16,8 +16,8 @@ import (
 
 	"github.com/go-acme/lego/v4/certificate"
 	legolog "github.com/go-acme/lego/v4/log"
-	"github.com/hdecarne-github/go-log"
 	"github.com/rs/zerolog"
+	"github.com/tdrn-org/go-log"
 )
 
 // DecodeCertificates decodes the certificate information (private key and certificate) as returned by the [LEGO client].

@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hdecarne-github/go-certstore/storage"
+	"github.com/tdrn-org/go-certstore/storage"
 )
 
 // NewStoreFromURI creates a certificate store based upon the submitted uri and base path.

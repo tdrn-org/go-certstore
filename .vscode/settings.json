@@ -1,7 +1,7 @@
 {
     "sonarlint.connectedMode.project": {
-        "connectionId": "hdecarne-github",
-        "projectKey": "hdecarne-github_go-certstore"
+        "connectionId": "tdrn-org",
+        "projectKey": "tdrn-org_go-certstore"
     },
     "makefile.configureOnOpen": false
 }

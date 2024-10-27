@@ -14,10 +14,10 @@ import (
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/challenge/http01"
 	"github.com/go-acme/lego/v4/challenge/tlsalpn01"
-	"github.com/hdecarne-github/go-certstore/certs/acme"
-	"github.com/hdecarne-github/go-certstore/keys"
-	"github.com/hdecarne-github/go-log"
 	"github.com/rs/zerolog"
+	"github.com/tdrn-org/go-certstore/certs/acme"
+	"github.com/tdrn-org/go-certstore/keys"
+	"github.com/tdrn-org/go-log"
 )
 
 const acmeFactoryNamePattern = "ACME[%s]"

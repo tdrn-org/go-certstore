@@ -11,8 +11,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/hdecarne-github/go-log"
 	"github.com/rs/zerolog"
+	"github.com/tdrn-org/go-log"
 )
 
 type entryVersion struct {

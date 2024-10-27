@@ -14,7 +14,7 @@ import (
 
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/lego"
-	"github.com/hdecarne-github/go-certstore/keys"
+	"github.com/tdrn-org/go-certstore/keys"
 	"gopkg.in/yaml.v3"
 )
 

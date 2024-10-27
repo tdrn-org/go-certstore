@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/hdecarne-github/go-certstore/keys"
-	"github.com/hdecarne-github/go-log"
 	"github.com/rs/zerolog"
+	"github.com/tdrn-org/go-certstore/keys"
+	"github.com/tdrn-org/go-log"
 )
 
 const localFactoryName = "Local"

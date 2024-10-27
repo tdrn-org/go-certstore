@@ -15,7 +15,7 @@ import (
 
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/registration"
-	"github.com/hdecarne-github/go-certstore/keys"
+	"github.com/tdrn-org/go-certstore/keys"
 )
 
 // A ProviderRegistration contains an ACME provider's registration information. This includes at least the necessary

@@ -16,11 +16,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hdecarne-github/go-certstore"
-	"github.com/hdecarne-github/go-certstore/certs"
-	"github.com/hdecarne-github/go-certstore/keys"
-	"github.com/hdecarne-github/go-certstore/storage"
 	"github.com/stretchr/testify/require"
+	"github.com/tdrn-org/go-certstore"
+	"github.com/tdrn-org/go-certstore/certs"
+	"github.com/tdrn-org/go-certstore/keys"
+	"github.com/tdrn-org/go-certstore/storage"
 )
 
 const testVersionLimit storage.VersionLimit = 2

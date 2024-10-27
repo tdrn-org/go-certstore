@@ -16,7 +16,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/hdecarne-github/go-certstore/keys"
+	"github.com/tdrn-org/go-certstore/keys"
 	"software.sslmate.com/src/go-pkcs12"
 )
 

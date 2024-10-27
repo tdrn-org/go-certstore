@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hdecarne-github/go-certstore/keys"
 	"github.com/stretchr/testify/require"
+	"github.com/tdrn-org/go-certstore/keys"
 )
 
 func TestPublicEquals(t *testing.T) {

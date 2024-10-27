@@ -23,10 +23,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hdecarne-github/go-certstore/certs"
-	"github.com/hdecarne-github/go-certstore/keys"
-	"github.com/hdecarne-github/go-certstore/storage"
-	"github.com/hdecarne-github/go-log"
+	"github.com/tdrn-org/go-certstore/certs"
+	"github.com/tdrn-org/go-certstore/keys"
+	"github.com/tdrn-org/go-certstore/storage"
+	"github.com/tdrn-org/go-log"
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/rs/zerolog"
 )

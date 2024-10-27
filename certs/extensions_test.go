@@ -10,8 +10,8 @@ import (
 	"encoding/asn1"
 	"testing"
 
-	"github.com/hdecarne-github/go-certstore/certs"
 	"github.com/stretchr/testify/require"
+	"github.com/tdrn-org/go-certstore/certs"
 )
 
 func TestKeyUsageString(t *testing.T) {

@@ -13,10 +13,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hdecarne-github/go-certstore/certs"
-	"github.com/hdecarne-github/go-certstore/certs/acme"
-	"github.com/hdecarne-github/go-certstore/keys"
 	"github.com/stretchr/testify/require"
+	"github.com/tdrn-org/go-certstore/certs"
+	"github.com/tdrn-org/go-certstore/certs/acme"
+	"github.com/tdrn-org/go-certstore/keys"
 )
 
 func TestACMECertificateFactory(t *testing.T) {

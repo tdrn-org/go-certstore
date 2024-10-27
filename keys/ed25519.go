@@ -11,8 +11,8 @@ import (
 	"crypto/rand"
 	"io"
 
-	"github.com/hdecarne-github/go-log"
 	"github.com/rs/zerolog"
+	"github.com/tdrn-org/go-log"
 )
 
 type ed25519KeyPair struct {

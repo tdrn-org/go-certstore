@@ -8,8 +8,8 @@ package acme_test
 import (
 	"testing"
 
-	"github.com/hdecarne-github/go-certstore/certs/acme"
 	"github.com/stretchr/testify/require"
+	"github.com/tdrn-org/go-certstore/certs/acme"
 )
 
 func TestLoadConfig(t *testing.T) {

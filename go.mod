@@ -1,4 +1,4 @@
-module github.com/hdecarne-github/go-certstore
+module github.com/tdrn-org/go-certstore
 
 go 1.23.2
 
@@ -31,8 +31,8 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/go-acme/lego/v4 v4.19.2
 	github.com/go-ldap/ldap/v3 v3.4.8
-	github.com/hdecarne-github/go-log v0.1.1
 	github.com/jellydator/ttlcache/v3 v3.3.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/tdrn-org/go-log v0.1.3
 	gopkg.in/yaml.v3 v3.0.1
 )

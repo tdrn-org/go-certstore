@@ -10,8 +10,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hdecarne-github/go-certstore"
 	"github.com/stretchr/testify/require"
+	"github.com/tdrn-org/go-certstore"
 )
 
 func TestMemoryStoreURI(t *testing.T) {
