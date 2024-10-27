@@ -47,7 +47,7 @@ func newACMECertificate(t *testing.T, config *acme.Config, provider string, alg 
 }
 
 func loadAndPrepareACMEConfig(t *testing.T, configPath string, tempDir string) *acme.Config {
-	config, err := acme.LoadConfig("./acme/testdata/acme-test.yaml")
+	config, err := acme.LoadConfig(configPath)
 	require.NoError(t, err)
 	require.NotNil(t, config)
 	certificateFiles := make([]string, 0)
