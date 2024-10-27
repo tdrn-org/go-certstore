@@ -23,17 +23,34 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jellydator/ttlcache/v3"
+	"github.com/rs/zerolog"
 	"github.com/tdrn-org/go-certstore/certs"
 	"github.com/tdrn-org/go-certstore/keys"
 	"github.com/tdrn-org/go-certstore/storage"
 	"github.com/tdrn-org/go-log"
-	"github.com/jellydator/ttlcache/v3"
-	"github.com/rs/zerolog"
 )
 
+// An ErrNoKey error indicates a missing key.
 var ErrNoKey = errors.New("no key")
+
+// An ErrNoCertificate error indicates a missing certificate.
 var ErrNoCertificate = errors.New("no certificate")
+
+// An ErrInvalidIssuer error indicates the given certificate is not suitable for the requested signing operation.
 var ErrInvalidIssuer = errors.New("invalid issuer certificate")
+
+// A MergeResult shows the result of a merge operation.
+type MergeResult int
+
+const (
+	// MergeResultNew indicates the merged security object is not related to any store entry (and therefore part of new store entry).
+	MergeResultNew MergeResult = 0
+	// MergeResultAdd indicates the merged security object is related a store entry, but not yet known (and therefor added during a merge).
+	MergeResultAdd MergeResult = 1
+	// MergeResultExists indicates the merged security object already exists in the store.
+	MergeResultExists MergeResult = 2
+)
 
 // A Registry represents a X.509 certificate store.
 type Registry struct {
