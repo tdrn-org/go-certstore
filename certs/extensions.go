@@ -153,8 +153,8 @@ func KeyIdentifierString(keyId []byte) string {
 	return RawExtensionString(keyId)
 }
 
-const SubjectAlternativeName = "SubjectAlternative"
-const SubjectAlternativeOID = "2.5.29.17"
+const SubjectAlternativeNameExtensionName = "SubjectAlternativeName"
+const SubjectAlternativeNameExtensionOID = "2.5.29.17"
 
 func SubjectAlternativeString(dnsNames []string, emailNames []string, ipNames []net.IP, uriNames []*url.URL) string {
 	if len(dnsNames) == 0 && len(emailNames) == 0 && len(ipNames) == 0 && len(uriNames) == 0 {
