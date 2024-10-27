@@ -10,6 +10,8 @@ import (
 	"encoding/asn1"
 	"encoding/hex"
 	"fmt"
+	"net"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -149,6 +151,45 @@ const AuthorityKeyIdentifierExtensionOID = "2.5.29.35"
 
 func KeyIdentifierString(keyId []byte) string {
 	return RawExtensionString(keyId)
+}
+
+const SubjectAlternativeName = "SubjectAlternative"
+const SubjectAlternativeOID = "2.5.29.17"
+
+func SubjectAlternativeString(dnsNames []string, emailNames []string, ipNames []net.IP, uriNames []*url.URL) string {
+	if len(dnsNames) == 0 && len(emailNames) == 0 && len(ipNames) == 0 && len(uriNames) == 0 {
+		return "-"
+	}
+	var builder strings.Builder
+	for _, dnsName := range dnsNames {
+		if builder.Len() > 0 {
+			builder.WriteString(", ")
+		}
+		builder.WriteString("DNS:")
+		builder.WriteString(dnsName)
+	}
+	for _, emailName := range emailNames {
+		if builder.Len() > 0 {
+			builder.WriteString(", ")
+		}
+		builder.WriteString("Email:")
+		builder.WriteString(emailName)
+	}
+	for _, ipName := range ipNames {
+		if builder.Len() > 0 {
+			builder.WriteString(", ")
+		}
+		builder.WriteString("IP:")
+		builder.WriteString(ipName.String())
+	}
+	for _, uriName := range uriNames {
+		if builder.Len() > 0 {
+			builder.WriteString(", ")
+		}
+		builder.WriteString("URI:")
+		builder.WriteString(uriName.String())
+	}
+	return builder.String()
 }
 
 const stringLimit = 32
