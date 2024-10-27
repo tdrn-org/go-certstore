@@ -33,7 +33,7 @@ import (
 //	      enabled: true
 //	      iface: ""
 //	      port: 5002
-//	    tls-apn-01:
+//	    tls-alpn-01:
 //	      enabled: true
 //	      iface: ""
 //	      port: 5001
@@ -147,7 +147,7 @@ func (providerConfig *ProviderConfig) newClientHelper(registrationFile *os.File,
 		return nil, fmt.Errorf("failed to create client for provider '%s' (cause: %w)", providerConfig.Name, err)
 	}
 	if !registration.isActive(client) {
-		err = registration.register(client, keyPairFactory)
+		err = registration.register(client)
 		if err != nil {
 			return nil, fmt.Errorf("failed to register client for provider '%s' (cause: %w)", providerConfig.Name, err)
 		}
@@ -183,7 +183,7 @@ type DomainConfig struct {
 	// Http01Challenge configures the HTTP-01 challenge type.
 	Http01Challenge Http01ChallengeConfig `yaml:"http-01"`
 	// Http01Challenge configures the TLS-ALPN-01 challenge type.
-	TLSAPN01Challenge TLSAPN01ChallengeConfig `yaml:"tls-apn-01"`
+	TLSALPN01Challenge TLSALPN01ChallengeConfig `yaml:"tls-alpn-01"`
 }
 
 // A Http01ChallengeConfig configures the HTTP-01 challenge type for domain validation.
@@ -196,7 +196,7 @@ type Http01ChallengeConfig struct {
 	Port int `ymal:"port"`
 }
 
-type TLSAPN01ChallengeConfig struct {
+type TLSALPN01ChallengeConfig struct {
 	// Enabled defines wether this challenge type is used (true) or not (false).
 	Enabled bool `yaml:"enabled"`
 	// Iface sets the interface to listen on during domain verification (optional).

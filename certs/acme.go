@@ -41,8 +41,8 @@ func (factory *acmeCertificateFactory) New() (crypto.PrivateKey, *x509.Certifica
 	if factory.certificateRequest.Domain.Http01Challenge.Enabled {
 		client.Challenge.SetHTTP01Provider(http01.NewProviderServer(factory.certificateRequest.Domain.Http01Challenge.Iface, strconv.Itoa(factory.certificateRequest.Domain.Http01Challenge.Port)))
 	}
-	if factory.certificateRequest.Domain.TLSAPN01Challenge.Enabled {
-		client.Challenge.SetTLSALPN01Provider(tlsalpn01.NewProviderServer(factory.certificateRequest.Domain.TLSAPN01Challenge.Iface, strconv.Itoa(factory.certificateRequest.Domain.TLSAPN01Challenge.Port)))
+	if factory.certificateRequest.Domain.TLSALPN01Challenge.Enabled {
+		client.Challenge.SetTLSALPN01Provider(tlsalpn01.NewProviderServer(factory.certificateRequest.Domain.TLSALPN01Challenge.Iface, strconv.Itoa(factory.certificateRequest.Domain.TLSALPN01Challenge.Port)))
 	}
 	key, err := factory.keyPairFactory.New()
 	if err != nil {

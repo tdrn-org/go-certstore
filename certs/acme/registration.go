@@ -76,7 +76,7 @@ func (providerRegistration *ProviderRegistration) isActive(client *lego.Client) 
 	return err == nil
 }
 
-func (providerRegistration *ProviderRegistration) register(client *lego.Client, keyFactory keys.KeyPairFactory) error {
+func (providerRegistration *ProviderRegistration) register(client *lego.Client) error {
 	options := registration.RegisterOptions{TermsOfServiceAgreed: true}
 	registrationResource, err := client.Registration.Register(options)
 	if err != nil {
