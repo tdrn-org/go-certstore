@@ -88,32 +88,31 @@ type legoLogger struct {
 }
 
 func (lego *legoLogger) Fatal(args ...interface{}) {
-	lego.logger.Error(fmt.Sprint(args...))
+	lego.logger.Error("ACME", slog.String("msg", fmt.Sprint(args...)))
 }
 
 func (lego *legoLogger) Fatalln(args ...interface{}) {
-	lego.logger.Error(fmt.Sprintln(args...))
+	lego.logger.Error("ACME", slog.String("msg", fmt.Sprintln(args...)))
 }
 
 func (lego *legoLogger) Fatalf(format string, args ...interface{}) {
-	lego.logger.Error(fmt.Sprintf(format, args...))
+	lego.logger.Error("ACME", slog.String("msg", fmt.Sprintf(format, args...)))
 }
 
 func (lego *legoLogger) Print(args ...interface{}) {
-	lego.logger.Info(fmt.Sprint(args...))
+	lego.logger.Info("ACME", slog.String("msg", fmt.Sprint(args...)))
 }
 
 func (lego *legoLogger) Println(args ...interface{}) {
-	lego.logger.Info(fmt.Sprintln(args...))
+	lego.logger.Info("ACME", slog.String("msg", fmt.Sprintln(args...)))
 }
 
 func (lego *legoLogger) Printf(format string, args ...interface{}) {
-	lego.logger.Info(fmt.Sprintf(format, args...))
+	lego.logger.Info("ACME", slog.String("msg", fmt.Sprintf(format, args...)))
 }
 
 func init() {
-	logger := slog.With(slog.String("Log", "ACME"))
 	legolog.Logger = &legoLogger{
-		logger: logger,
+		logger: slog.Default(),
 	}
 }
