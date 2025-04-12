@@ -50,7 +50,7 @@ func (factory *ecdsaKeyPairFactory) Alg() Algorithm {
 }
 
 func (factory *ecdsaKeyPairFactory) New() (KeyPair, error) {
-	factory.logger.Info("generating new ECSDA key pair...")
+	factory.logger.Info("generating key pair...")
 	return newECDSAKeyPair(factory.alg, factory.curve)
 }
 

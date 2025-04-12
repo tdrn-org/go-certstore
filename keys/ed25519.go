@@ -48,7 +48,7 @@ func (factory *ed25519KeyPairFactory) Alg() Algorithm {
 }
 
 func (factory *ed25519KeyPairFactory) New() (KeyPair, error) {
-	factory.logger.Info("generating new ED25519 key pair...")
+	factory.logger.Info("generating key pair...")
 	return newED25519KeyPair()
 }
 

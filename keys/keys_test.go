@@ -124,7 +124,7 @@ func TestAlgs(t *testing.T) {
 		algFromName, err := keys.AlgorithmFromString(alg.String())
 		require.NoError(t, err)
 		require.Equal(t, alg, algFromName)
-		fmt.Printf("Generating %s", alg)
+		fmt.Printf("Generating %s...\n", alg)
 		start := time.Now()
 		kpf := alg.NewKeyPairFactory()
 		require.NotNil(t, kpf)

@@ -49,7 +49,7 @@ func (factory *rsaKeyPairFactory) Alg() Algorithm {
 }
 
 func (factory *rsaKeyPairFactory) New() (KeyPair, error) {
-	factory.logger.Info("generating new RSA key pair...")
+	factory.logger.Info("generating key pair...")
 	return newRSAKeyPair(factory.alg, factory.bits)
 }
 
