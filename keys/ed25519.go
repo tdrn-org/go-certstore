@@ -10,9 +10,7 @@ import (
 	algorithm "crypto/ed25519"
 	"crypto/rand"
 	"io"
-
-	"github.com/rs/zerolog"
-	"github.com/tdrn-org/go-log"
+	"log/slog"
 )
 
 type ed25519KeyPair struct {
@@ -42,7 +40,7 @@ func newED25519KeyPair() (KeyPair, error) {
 }
 
 type ed25519KeyPairFactory struct {
-	logger *zerolog.Logger
+	logger *slog.Logger
 }
 
 func (factory *ed25519KeyPairFactory) Alg() Algorithm {
@@ -50,13 +48,13 @@ func (factory *ed25519KeyPairFactory) Alg() Algorithm {
 }
 
 func (factory *ed25519KeyPairFactory) New() (KeyPair, error) {
-	factory.logger.Info().Msg("generating new ED25519 key pair...")
+	factory.logger.Info("generating new ED25519 key pair...")
 	return newED25519KeyPair()
 }
 
 func newED25519KeyPairFactory() KeyPairFactory {
-	logger := log.RootLogger().With().Str("Algorithm", ED25519.String()).Logger()
-	return &ed25519KeyPairFactory{logger: &logger}
+	logger := slog.With(slog.String("alg", ED25519.String()))
+	return &ed25519KeyPairFactory{logger: logger}
 }
 
 type ed25519Key struct {

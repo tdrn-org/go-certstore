@@ -8,11 +8,9 @@ package storage
 import (
 	"container/heap"
 	"fmt"
+	"log/slog"
 	"slices"
 	"sync"
-
-	"github.com/rs/zerolog"
-	"github.com/tdrn-org/go-log"
 )
 
 type entryVersion struct {
@@ -60,7 +58,7 @@ type memoryBackend struct {
 	versionLimit VersionLimit
 	lock         sync.RWMutex
 	entries      map[string]entryVersions
-	logger       *zerolog.Logger
+	logger       *slog.Logger
 }
 
 func (backend *memoryBackend) URI() string {
@@ -70,7 +68,7 @@ func (backend *memoryBackend) URI() string {
 func (backend *memoryBackend) Create(name string, data []byte) (string, error) {
 	backend.lock.Lock()
 	defer backend.lock.Unlock()
-	backend.logger.Debug().Msgf("creating entry '%s*'...", name)
+	backend.logger.Debug("creating entry...", slog.String("name", name))
 	nextName := name
 	nextSuffix := 1
 	for {
@@ -88,7 +86,7 @@ func (backend *memoryBackend) Create(name string, data []byte) (string, error) {
 		versions = entryVersions{entry}
 		heap.Init(&versions)
 		backend.entries[nextName] = versions
-		backend.logger.Debug().Msgf("created entry '%s'", nextName)
+		backend.logger.Debug("created entry", slog.String("name", nextName))
 		return nextName, nil
 	}
 }
@@ -96,7 +94,7 @@ func (backend *memoryBackend) Create(name string, data []byte) (string, error) {
 func (backend *memoryBackend) Update(name string, data []byte) (Version, error) {
 	backend.lock.Lock()
 	defer backend.lock.Unlock()
-	backend.logger.Debug().Msgf("updating entry '%s'...", name)
+	backend.logger.Debug("updating entry...", slog.String("name", name))
 	versions, update := backend.entries[name]
 	if !update {
 		return 0, ErrNotExist
@@ -112,20 +110,20 @@ func (backend *memoryBackend) Update(name string, data []byte) (Version, error) 
 	}
 	heap.Push(&versions, entry)
 	backend.entries[name] = versions
-	backend.logger.Debug().Msgf("updated entry '%s' to version %d", name, entry.version)
+	backend.logger.Debug("updated entry", slog.String("name", name), slog.Uint64("version", uint64(entry.version)))
 	return entry.version, nil
 }
 
 func (backend *memoryBackend) Delete(name string) error {
 	backend.lock.Lock()
 	defer backend.lock.Unlock()
-	backend.logger.Debug().Msgf("deleting entry '%s'...", name)
+	backend.logger.Debug("deleting entry...", slog.String("name", name))
 	_, exists := backend.entries[name]
 	if !exists {
 		return ErrNotExist
 	}
 	delete(backend.entries, name)
-	backend.logger.Debug().Msgf("entry '%s' deleted", name)
+	backend.logger.Debug("deleted entry", slog.String("name", name))
 	return nil
 }
 
@@ -195,15 +193,15 @@ func (backend *memoryBackend) GetVersion(name string, version Version) ([]byte, 
 }
 
 func (backend *memoryBackend) Log(name string, message string) error {
-	backend.logger.Info().Msgf("log: %s", message)
+	backend.logger.Info(message)
 	return nil
 }
 
 func NewMemoryStorage(versionLimit VersionLimit) Backend {
-	logger := log.RootLogger().With().Str("Backend", memoryBackendURI).Logger()
+	logger := slog.With(slog.String("backend", memoryBackendURI))
 	return &memoryBackend{
 		versionLimit: versionLimit.normalize(),
 		entries:      make(map[string]entryVersions),
-		logger:       &logger,
+		logger:       logger,
 	}
 }

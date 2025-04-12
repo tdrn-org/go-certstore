@@ -10,10 +10,9 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"fmt"
+	"log/slog"
 
-	"github.com/rs/zerolog"
 	"github.com/tdrn-org/go-certstore/keys"
-	"github.com/tdrn-org/go-log"
 )
 
 const remoteFactoryName = "Remote"
@@ -23,7 +22,7 @@ type remoteCertificateFactory struct {
 	request  *x509.CertificateRequest
 	parent   *x509.Certificate
 	signer   crypto.PrivateKey
-	logger   *zerolog.Logger
+	logger   *slog.Logger
 }
 
 func (factory *remoteCertificateFactory) Name() string {
@@ -32,7 +31,7 @@ func (factory *remoteCertificateFactory) Name() string {
 
 func (factory *remoteCertificateFactory) New() (crypto.PrivateKey, *x509.Certificate, error) {
 	createTemplate := factory.template
-	factory.logger.Info().Msg("creating X.509 certificate from remote request...")
+	factory.logger.Info("creating X.509 certificate from remote request...")
 	createTemplate.SerialNumber = nextSerialNumber()
 	certificateBytes, err := x509.CreateCertificate(rand.Reader, createTemplate, factory.parent, factory.request.PublicKey, factory.signer)
 	if err != nil {
@@ -47,20 +46,20 @@ func (factory *remoteCertificateFactory) New() (crypto.PrivateKey, *x509.Certifi
 
 // NewRemoteCertificateFactory creates a new certificate factory for request based certificates.
 func NewRemoteCertificateFactory(template *x509.Certificate, request *x509.CertificateRequest, parent *x509.Certificate, signer crypto.PrivateKey) CertificateFactory {
-	logger := log.RootLogger().With().Str("Factory", remoteFactoryName).Logger()
+	logger := slog.With(slog.String("factory", remoteFactoryName))
 	return &remoteCertificateFactory{
 		template: template,
 		request:  request,
 		parent:   parent,
 		signer:   signer,
-		logger:   &logger,
+		logger:   logger,
 	}
 }
 
 type remoteCertificateRequestFactory struct {
 	template       *x509.CertificateRequest
 	keyPairFactory keys.KeyPairFactory
-	logger         *zerolog.Logger
+	logger         *slog.Logger
 }
 
 func (factory *remoteCertificateRequestFactory) Name() string {
@@ -72,7 +71,7 @@ func (factory *remoteCertificateRequestFactory) New() (crypto.PrivateKey, *x509.
 	if err != nil {
 		return nil, nil, err
 	}
-	factory.logger.Info().Msg("creating X.509 certificate request for remote signing...")
+	factory.logger.Info("creating X.509 certificate request for remote signing...")
 	certificateRequestBytes, err := x509.CreateCertificateRequest(rand.Reader, factory.template, keyPair.Private())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create certificate request (cause: %w)", err)
@@ -86,10 +85,10 @@ func (factory *remoteCertificateRequestFactory) New() (crypto.PrivateKey, *x509.
 
 // NewRemoteCertificateRequestFactory creates a new certificate request factory for remotely signed certificates.
 func NewRemoteCertificateRequestFactory(template *x509.CertificateRequest, keyPairFactory keys.KeyPairFactory) CertificateRequestFactory {
-	logger := log.RootLogger().With().Str("Factory", remoteFactoryName).Logger()
+	logger := slog.With(slog.String("factory", remoteFactoryName))
 	return &remoteCertificateRequestFactory{
 		template:       template,
 		keyPairFactory: keyPairFactory,
-		logger:         &logger,
+		logger:         logger,
 	}
 }

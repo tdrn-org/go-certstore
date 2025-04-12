@@ -10,11 +10,10 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"fmt"
+	"log/slog"
 	"math/big"
 
-	"github.com/rs/zerolog"
 	"github.com/tdrn-org/go-certstore/keys"
-	"github.com/tdrn-org/go-log"
 )
 
 const localFactoryName = "Local"
@@ -24,7 +23,7 @@ type localCertificateFactory struct {
 	keyPairFactory keys.KeyPairFactory
 	parent         *x509.Certificate
 	signer         crypto.PrivateKey
-	logger         *zerolog.Logger
+	logger         *slog.Logger
 }
 
 func (factory *localCertificateFactory) Name() string {
@@ -40,12 +39,12 @@ func (factory *localCertificateFactory) New() (crypto.PrivateKey, *x509.Certific
 	var certificateBytes []byte
 	if factory.parent != nil {
 		// parent signed
-		factory.logger.Info().Msg("creating signed local X.509 certificate...")
+		factory.logger.Info("creating signed local X.509 certificate...")
 		createTemplate.SerialNumber = nextSerialNumber()
 		certificateBytes, err = x509.CreateCertificate(rand.Reader, createTemplate, factory.parent, keyPair.Public(), factory.signer)
 	} else {
 		// self-signed
-		factory.logger.Info().Msg("creating self-signed local X.509 certificate...")
+		factory.logger.Info("creating self-signed local X.509 certificate...")
 		createTemplate.SerialNumber = big.NewInt(1)
 		certificateBytes, err = x509.CreateCertificate(rand.Reader, createTemplate, createTemplate, keyPair.Public(), keyPair.Private())
 	}
@@ -61,19 +60,19 @@ func (factory *localCertificateFactory) New() (crypto.PrivateKey, *x509.Certific
 
 // NewLocalCertificateFactory creates a new certificate factory for locally issued certificates.
 func NewLocalCertificateFactory(template *x509.Certificate, keyPairFactory keys.KeyPairFactory, parent *x509.Certificate, signer crypto.PrivateKey) CertificateFactory {
-	logger := log.RootLogger().With().Str("Factory", localFactoryName).Logger()
+	logger := slog.With(slog.String("factory", localFactoryName))
 	return &localCertificateFactory{
 		template:       template,
 		keyPairFactory: keyPairFactory,
 		parent:         parent,
 		signer:         signer,
-		logger:         &logger,
+		logger:         logger,
 	}
 }
 
 type localRevocationListFactory struct {
 	template *x509.RevocationList
-	logger   *zerolog.Logger
+	logger   *slog.Logger
 }
 
 func (factory *localRevocationListFactory) Name() string {
@@ -81,7 +80,7 @@ func (factory *localRevocationListFactory) Name() string {
 }
 
 func (factory *localRevocationListFactory) New(issuer *x509.Certificate, signer crypto.PrivateKey) (*x509.RevocationList, error) {
-	factory.logger.Info().Msg("creating local X.509 revocation list...")
+	factory.logger.Info("creating local X.509 revocation list...")
 	revocationListBytes, err := x509.CreateRevocationList(rand.Reader, factory.template, issuer, keys.KeyFromPrivate(signer))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create revocation list (cause: %w)", err)
@@ -95,9 +94,9 @@ func (factory *localRevocationListFactory) New(issuer *x509.Certificate, signer 
 
 // NewLocalRevocationListFactory creates a new revocation list factory for locally issued certificates.
 func NewLocalRevocationListFactory(template *x509.RevocationList) RevocationListFactory {
-	logger := log.RootLogger().With().Str("Factory", localFactoryName).Logger()
+	logger := slog.With(slog.String("factory", localFactoryName))
 	return &localRevocationListFactory{
 		template: template,
-		logger:   &logger,
+		logger:   logger,
 	}
 }

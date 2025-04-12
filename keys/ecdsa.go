@@ -11,9 +11,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"io"
-
-	"github.com/rs/zerolog"
-	"github.com/tdrn-org/go-log"
+	"log/slog"
 )
 
 type ecdsaKeyPair struct {
@@ -44,7 +42,7 @@ func newECDSAKeyPair(alg Algorithm, curve elliptic.Curve) (KeyPair, error) {
 type ecdsaKeyPairFactory struct {
 	alg    Algorithm
 	curve  elliptic.Curve
-	logger *zerolog.Logger
+	logger *slog.Logger
 }
 
 func (factory *ecdsaKeyPairFactory) Alg() Algorithm {
@@ -52,13 +50,13 @@ func (factory *ecdsaKeyPairFactory) Alg() Algorithm {
 }
 
 func (factory *ecdsaKeyPairFactory) New() (KeyPair, error) {
-	factory.logger.Info().Msg("generating new ECSDA key pair...")
+	factory.logger.Info("generating new ECSDA key pair...")
 	return newECDSAKeyPair(factory.alg, factory.curve)
 }
 
 func newECDSAKeyPairFactory(alg Algorithm, curve elliptic.Curve) KeyPairFactory {
-	logger := log.RootLogger().With().Str("Algorithm", alg.String()).Logger()
-	return &ecdsaKeyPairFactory{alg: alg, curve: curve, logger: &logger}
+	logger := slog.With(slog.String("alg", alg.String()))
+	return &ecdsaKeyPairFactory{alg: alg, curve: curve, logger: logger}
 }
 
 type ecdsaKey struct {

@@ -14,15 +14,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
-	"github.com/rs/zerolog"
 	"github.com/tdrn-org/go-certstore/certs"
 	"github.com/tdrn-org/go-certstore/storage"
-	"github.com/tdrn-org/go-log"
 )
 
 // An ErrNoKey error indicates a missing key.
@@ -49,9 +48,6 @@ const (
 )
 
 func (status MergeStatus) combine(other MergeStatus) MergeStatus {
-	if status == MergeStatusNone {
-		return other
-	}
 	if status == MergeStatusNew || status == MergeStatusAdd {
 		return status
 	}
@@ -63,7 +59,7 @@ type Registry struct {
 	settings   *storeSettings
 	backend    storage.Backend
 	entryCache *ttlcache.Cache[string, *RegistryEntry]
-	logger     *zerolog.Logger
+	logger     *slog.Logger
 }
 
 // Name gets the registry name which is derived from the registry's storage location.
@@ -643,10 +639,10 @@ const storeAuditName = ".audit"
 
 func (registry *Registry) audit(pattern auditPattern, name string, user string) {
 	message := pattern.sprintf(name, user)
-	registry.logger.Info().Msgf("audit: %s", message)
+	registry.logger.Info("audit", slog.String("message", message))
 	err := registry.backend.Log(storeAuditName, message)
 	if err != nil {
-		registry.logger.Fatal().Err(err).Msgf("failed to write audit log '%s'", message)
+		registry.logger.Error("failed to write audit log", slog.String("message", message), slog.Any("err", err))
 	}
 }
 
@@ -679,14 +675,14 @@ type storeSettings struct {
 // If the submitted storage location is used for the first time, a new certificate store is setup.
 // Using the same storage location again, opens the previously created certificate store.
 func NewStore(backend storage.Backend, cacheTTL time.Duration) (*Registry, error) {
-	logger := log.RootLogger().With().Str("Registry", backend.URI()).Logger()
-	settings, err := newStoreSettings(backend, &logger)
+	logger := slog.With(slog.String("registry", backend.URI()))
+	settings, err := newStoreSettings(backend, logger)
 	if err != nil {
 		return nil, err
 	}
 	var entryCache *ttlcache.Cache[string, *RegistryEntry]
 	if cacheTTL > 0 {
-		entryCache = ttlcache.New[string, *RegistryEntry](ttlcache.WithTTL[string, *RegistryEntry](cacheTTL))
+		entryCache = ttlcache.New(ttlcache.WithTTL[string, *RegistryEntry](cacheTTL))
 		go entryCache.Start()
 		runtime.SetFinalizer(entryCache, func(cache *ttlcache.Cache[string, *RegistryEntry]) { cache.Stop() })
 	}
@@ -694,11 +690,11 @@ func NewStore(backend storage.Backend, cacheTTL time.Duration) (*Registry, error
 		settings:   settings,
 		backend:    backend,
 		entryCache: entryCache,
-		logger:     &logger,
+		logger:     logger,
 	}, nil
 }
 
-func newStoreSettings(backend storage.Backend, logger *zerolog.Logger) (*storeSettings, error) {
+func newStoreSettings(backend storage.Backend, logger *slog.Logger) (*storeSettings, error) {
 	data, err := backend.Get(storeSettingsName)
 	settings := &storeSettings{}
 	if err == nil {
@@ -711,8 +707,8 @@ func newStoreSettings(backend storage.Backend, logger *zerolog.Logger) (*storeSe
 	return settings, err
 }
 
-func initStoreSettings(backend storage.Backend, logger *zerolog.Logger, settings *storeSettings) error {
-	logger.Info().Msg("initializing store settings...")
+func initStoreSettings(backend storage.Backend, logger *slog.Logger, settings *storeSettings) error {
+	logger.Info("initializing store settings...")
 	secretBytes := make([]byte, 32)
 	_, err := rand.Read(secretBytes)
 	if err != nil {

@@ -13,11 +13,10 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"log/slog"
 
 	"github.com/go-acme/lego/v4/certificate"
 	legolog "github.com/go-acme/lego/v4/log"
-	"github.com/rs/zerolog"
-	"github.com/tdrn-org/go-log"
 )
 
 // DecodeCertificates decodes the certificate information (private key and certificate) as returned by the [LEGO client].
@@ -85,36 +84,36 @@ func DecodeCertificate(certificateBytes []byte) (*x509.Certificate, error) {
 }
 
 type legoLogger struct {
-	logger *zerolog.Logger
+	logger *slog.Logger
 }
 
 func (lego *legoLogger) Fatal(args ...interface{}) {
-	lego.logger.Fatal().Msg(fmt.Sprint(args...))
+	lego.logger.Error(fmt.Sprint(args...))
 }
 
 func (lego *legoLogger) Fatalln(args ...interface{}) {
-	lego.logger.Fatal().Msg(fmt.Sprintln(args...))
+	lego.logger.Error(fmt.Sprintln(args...))
 }
 
 func (lego *legoLogger) Fatalf(format string, args ...interface{}) {
-	lego.logger.Fatal().Msg(fmt.Sprintf(format, args...))
+	lego.logger.Error(fmt.Sprintf(format, args...))
 }
 
 func (lego *legoLogger) Print(args ...interface{}) {
-	lego.logger.Info().Msg(fmt.Sprint(args...))
+	lego.logger.Info(fmt.Sprint(args...))
 }
 
 func (lego *legoLogger) Println(args ...interface{}) {
-	lego.logger.Info().Msg(fmt.Sprintln(args...))
+	lego.logger.Info(fmt.Sprintln(args...))
 }
 
 func (lego *legoLogger) Printf(format string, args ...interface{}) {
-	lego.logger.Info().Msg(fmt.Sprintf(format, args...))
+	lego.logger.Info(fmt.Sprintf(format, args...))
 }
 
 func init() {
-	logger := log.RootLogger().With().Str("Log", "ACME").Logger()
+	logger := slog.With(slog.String("Log", "ACME"))
 	legolog.Logger = &legoLogger{
-		logger: &logger,
+		logger: logger,
 	}
 }

@@ -7,14 +7,12 @@ package storage
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"syscall"
-
-	"github.com/rs/zerolog"
-	"github.com/tdrn-org/go-log"
 )
 
 const fsBackendURIPattern = "fs://%s"
@@ -26,7 +24,7 @@ type fsBackend struct {
 	versionLimit VersionLimit
 	uri          string
 	path         string
-	logger       *zerolog.Logger
+	logger       *slog.Logger
 }
 
 func (backend *fsBackend) URI() string {
@@ -34,7 +32,7 @@ func (backend *fsBackend) URI() string {
 }
 
 func (backend *fsBackend) Create(name string, data []byte) (string, error) {
-	backend.logger.Debug().Msgf("creating entry '%s*'...", name)
+	backend.logger.Debug("creating entry...", slog.String("name", name))
 	nextName := name
 	nextSuffix := 1
 	for {
@@ -56,7 +54,7 @@ func (backend *fsBackend) Create(name string, data []byte) (string, error) {
 		if err != nil {
 			return nextName, fmt.Errorf("failed to write entry version '%s' (cause: %w)", versionFile, err)
 		}
-		backend.logger.Debug().Msgf("created entry '%s'", nextName)
+		backend.logger.Debug("created entry", slog.String("name", nextName))
 		return nextName, nil
 	}
 }
@@ -67,7 +65,7 @@ func (backend *fsBackend) Update(name string, data []byte) (Version, error) {
 		return 0, err
 	}
 	defer lock.release()
-	backend.logger.Debug().Msgf("updating entry '%s'...", name)
+	backend.logger.Debug("updating entry...", slog.String("name", name))
 	entryPath, err := backend.checkEntryPath(name, false)
 	if err != nil {
 		return 0, err
@@ -94,7 +92,7 @@ func (backend *fsBackend) Update(name string, data []byte) (Version, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to write entry version '%s' (cause: %w)", nextVersionFile, err)
 	}
-	backend.logger.Debug().Msgf("updated entry '%s' to version %d", name, nextVersion)
+	backend.logger.Debug("updated entry", slog.String("name", name), slog.Uint64("version", uint64(nextVersion)))
 	return nextVersion, nil
 }
 
@@ -104,7 +102,7 @@ func (backend *fsBackend) Delete(name string) error {
 		return err
 	}
 	defer lock.release()
-	backend.logger.Debug().Msgf("deleting entry '%s'...", name)
+	backend.logger.Debug("deleting entry...", slog.String("name", name))
 	entryPath, err := backend.checkEntryPath(name, false)
 	if err != nil {
 		return err
@@ -113,7 +111,7 @@ func (backend *fsBackend) Delete(name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete entry '%s' (cause: %w)", name, err)
 	}
-	backend.logger.Debug().Msgf("entry '%s' deleted", name)
+	backend.logger.Debug("deleted entry", slog.String("name", name))
 	return nil
 }
 
@@ -240,7 +238,7 @@ func (backend *fsBackend) checkEntryPath(name string, create bool) (string, erro
 		if !create {
 			return entryPath, ErrNotExist
 		}
-		backend.logger.Info().Msgf("creating entry path '%s'...", entryPath)
+		backend.logger.Info("creating entry path...", slog.String("path", entryPath))
 		err = os.MkdirAll(entryPath, fsBackendDirPerm)
 		if err != nil {
 			return entryPath, fmt.Errorf("failed to create entry path '%s' (cause: %w)", entryPath, err)
@@ -277,13 +275,13 @@ func (backend *fsBackend) resolveEntryVersionFile(entryPath string, version Vers
 
 type fsLock struct {
 	file   *os.File
-	logger *zerolog.Logger
+	logger *slog.Logger
 }
 
 func (lock *fsLock) release() {
 	err := syscall.Flock(int(lock.file.Fd()), syscall.LOCK_UN)
 	if err != nil {
-		lock.logger.Error().Err(err).Msg("failed to release file lock")
+		lock.logger.Error("failed to release file lock", slog.Any("err", err))
 	}
 }
 
@@ -303,8 +301,8 @@ func (backend *fsBackend) lock(how int) (*fsLock, error) {
 
 func NewFSStorage(path string, versionLimit VersionLimit) (Backend, error) {
 	uri := fmt.Sprintf(fsBackendURIPattern, path)
-	logger := log.RootLogger().With().Str("Backend", uri).Logger()
-	checkedPath, err := checkFSStoragePath(path, &logger)
+	logger := slog.With(slog.String("backend", uri))
+	checkedPath, err := checkFSStoragePath(path, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -312,18 +310,18 @@ func NewFSStorage(path string, versionLimit VersionLimit) (Backend, error) {
 		versionLimit: versionLimit.normalize(),
 		uri:          uri,
 		path:         checkedPath,
-		logger:       &logger,
+		logger:       logger,
 	}, nil
 }
 
-func checkFSStoragePath(path string, logger *zerolog.Logger) (string, error) {
+func checkFSStoragePath(path string, logger *slog.Logger) (string, error) {
 	absolutePath, err := filepath.Abs(path)
 	if err != nil {
 		return absolutePath, fmt.Errorf("unable to determin absolute path for '%s' (cause: %w)", path, err)
 	}
 	pathInfo, err := os.Stat(absolutePath)
 	if os.IsNotExist(err) {
-		logger.Info().Msgf("creating storage path '%s'...", absolutePath)
+		logger.Info("creating storage path...", slog.String("path", absolutePath))
 		err = os.MkdirAll(absolutePath, fsBackendDirPerm)
 		if err != nil {
 			return absolutePath, fmt.Errorf("failed to create storage path '%s' (cause: %w)", absolutePath, err)

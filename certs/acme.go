@@ -9,15 +9,14 @@ import (
 	"crypto"
 	"crypto/x509"
 	"fmt"
+	"log/slog"
 	"strconv"
 
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/challenge/http01"
 	"github.com/go-acme/lego/v4/challenge/tlsalpn01"
-	"github.com/rs/zerolog"
 	"github.com/tdrn-org/go-certstore/certs/acme"
 	"github.com/tdrn-org/go-certstore/keys"
-	"github.com/tdrn-org/go-log"
 )
 
 const acmeFactoryNamePattern = "ACME[%s]"
@@ -26,7 +25,7 @@ type acmeCertificateFactory struct {
 	name               string
 	certificateRequest *acme.CertificateRequest
 	keyPairFactory     keys.KeyPairFactory
-	logger             *zerolog.Logger
+	logger             *slog.Logger
 }
 
 func (factory *acmeCertificateFactory) Name() string {
@@ -53,7 +52,7 @@ func (factory *acmeCertificateFactory) New() (crypto.PrivateKey, *x509.Certifica
 		PrivateKey: key.Private(),
 		Bundle:     false,
 	}
-	factory.logger.Info().Msgf("obtaining X.509 certificate from ACME provider '%s...", factory.certificateRequest.Provider.Name)
+	factory.logger.Info("obtaining X.509 certificate from ACME provider", slog.String("provider", factory.certificateRequest.Provider.Name))
 	certificates, err := client.Certificate.Obtain(request)
 	if err != nil {
 		return nil, nil, err
@@ -68,11 +67,11 @@ func (factory *acmeCertificateFactory) New() (crypto.PrivateKey, *x509.Certifica
 // NewACMECertificateFactory creates a new certificate factory for ACME based certificates.
 func NewACMECertificateFactory(certificateRequest *acme.CertificateRequest, keyPairFactory keys.KeyPairFactory) CertificateFactory {
 	name := fmt.Sprintf(acmeFactoryNamePattern, certificateRequest.Provider.Name)
-	logger := log.RootLogger().With().Str("Factory", name).Logger()
+	logger := slog.With(slog.String("factory", name))
 	return &acmeCertificateFactory{
 		name:               name,
 		certificateRequest: certificateRequest,
 		keyPairFactory:     keyPairFactory,
-		logger:             &logger,
+		logger:             logger,
 	}
 }

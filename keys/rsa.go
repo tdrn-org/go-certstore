@@ -10,9 +10,7 @@ import (
 	"crypto/rand"
 	algorithm "crypto/rsa"
 	"io"
-
-	"github.com/rs/zerolog"
-	"github.com/tdrn-org/go-log"
+	"log/slog"
 )
 
 type rsaKeyPair struct {
@@ -43,7 +41,7 @@ func newRSAKeyPair(alg Algorithm, bits int) (KeyPair, error) {
 type rsaKeyPairFactory struct {
 	alg    Algorithm
 	bits   int
-	logger *zerolog.Logger
+	logger *slog.Logger
 }
 
 func (factory *rsaKeyPairFactory) Alg() Algorithm {
@@ -51,13 +49,13 @@ func (factory *rsaKeyPairFactory) Alg() Algorithm {
 }
 
 func (factory *rsaKeyPairFactory) New() (KeyPair, error) {
-	factory.logger.Info().Msg("generating new RSA key pair...")
+	factory.logger.Info("generating new RSA key pair...")
 	return newRSAKeyPair(factory.alg, factory.bits)
 }
 
 func newRSAKeyPairFactory(alg Algorithm, bits int) KeyPairFactory {
-	logger := log.RootLogger().With().Str("Algorithm", alg.String()).Logger()
-	return &rsaKeyPairFactory{alg: alg, bits: bits, logger: &logger}
+	logger := slog.With(slog.String("alg", alg.String()))
+	return &rsaKeyPairFactory{alg: alg, bits: bits, logger: logger}
 }
 
 type rsaKey struct {
