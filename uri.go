@@ -27,7 +27,7 @@ import (
 // Known uri parameters are:
 //
 //  1. cache_ttl: The cache ttl (see [time.ParseDuration])
-//  1. cache_ttl: The version limit (see [time.ParseUint])
+//  1. version_limit: The version limit (see [strconv.ParseUint])
 //
 // See [NewStore] for further details.
 func NewStoreFromURI(uri string, basePath string) (*Registry, error) {
